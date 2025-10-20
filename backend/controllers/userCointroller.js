@@ -4,29 +4,71 @@ const cloudinary = require("../configs/cloudinary");
 const fs = require("fs");
 const { uploadToCloudinary } = require("../configs/cloudinary"); // Import the helper
 
+// exports.saveRecord = async (req, res) => {
+//   try {
+//     if (!req.body) throw new Error("undefined body");
+//     if (!req.file) throw new Error("File is undefined");
+
+//     // Upload using the standardized helper function
+//     const result = await uploadToCloudinary(req.file.buffer, "wasteVision");
+//     if (!result) throw new Error("failed to upload the image");
+
+//     // Parse the items JSON string to array
+//     let itemsArray;
+//     try {
+//       itemsArray = JSON.parse(req.body.items);
+//     } catch (parseError) {
+//       throw new Error("Invalid items format: " + parseError.message);
+//     }
+
+//     const saveResult = await UserActivity.create({
+//       user: req.user.id,
+//       items: itemsArray, // Use the parsed array here
+//       image: {
+//         public_id: result.public_id,
+//         url: result.secure_url, // Use secure_url from the result
+//       },
+//       isSave: true,
+//     });
+
+//     if (!saveResult) throw new Error("failed to save the result");
+
+//     return res.status(201).json({
+//       success: true,
+//       record: saveResult,
+//     });
+//   } catch (error) {
+//     console.log(error.message);
+//     return res.status(500).json({ error: error.message });
+//   }
+// };
+
+
+
+
+
+//hardcode
 exports.saveRecord = async (req, res) => {
   try {
     if (!req.body) throw new Error("undefined body");
     if (!req.file) throw new Error("File is undefined");
 
     // Upload using the standardized helper function
-    const result = await uploadToCloudinary(req.file.buffer, "wasteVision");
-    if (!result) throw new Error("failed to upload the image");
+    const uploads = await uploadToCloudinary(req.file.buffer, "wasteVision");
+    if (!uploads) throw new Error("failed to upload the image");
 
-    // Parse the items JSON string to array
-    let itemsArray;
-    try {
-      itemsArray = JSON.parse(req.body.items);
-    } catch (parseError) {
-      throw new Error("Invalid items format: " + parseError.message);
-    }
+    // Hardcoded items for testing purposes
+    const itemsArray = [
+      { item: "Test Item 1", type: "Recyclable", confidence: 0.99 },
+      { item: "Test Item 2", type: "Organic", confidence: 0.98 }
+    ];
 
     const saveResult = await UserActivity.create({
       user: req.user.id,
-      items: itemsArray, // Use the parsed array here
+      items: itemsArray, // Use the hardcoded array here
       image: {
-        public_id: result.public_id,
-        url: result.secure_url, // Use secure_url from the result
+        public_id: uploads.public_id,
+        url: uploads.secure_url, // Use secure_url from the result
       },
       isSave: true,
     });
@@ -42,6 +84,7 @@ exports.saveRecord = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
 
 exports.fetchRecords = async (req, res) => {
   try {
