@@ -1,7 +1,10 @@
 const User =require("../models/user")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
+const { uploadToCloudinary } = require('../configs/cloudinary'); // Import the new helper
 
+
+//Login Controller
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -42,14 +45,42 @@ exports.login = async (req, res) => {
 };
 
 
-exports.register =async(req,res)=>{
+//Register Controller
+exports.register = async (req, res) => {
     try {
-        
-        const newUser =await User.create(req.body)
-        await newUser.save()
-        return res.status(200).json(newUser)
+        const { name, email, password } = req.body;
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: "User with this email already exists." });
+        }
+
+        const userData = { name, email, password };
+
+        // If a file is uploaded, handle it
+        if (req.file) {
+            // Upload the file buffer to Cloudinary
+            const result = await uploadToCloudinary(req.file.buffer);
+            userData.avatar = {
+                public_id: result.public_id,
+                url: result.secure_url
+            };
+        }
+
+        const newUser = await User.create(userData);
+
+        const userResponse = {
+            _id: newUser._id,
+            name: newUser.name,
+            email: newUser.email,
+            avatar: newUser.avatar,
+            role: newUser.role
+        };
+
+        return res.status(201).json({ message: "User registered successfully", user: userResponse });
+
     } catch (error) {
-        console.log(error.message)
-        return res.status(500). json(error.message)
+        console.log(error.message);
+        return res.status(500).json({ message: "Server error", error: error.message });
     }
-}
+};
