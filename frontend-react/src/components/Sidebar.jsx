@@ -6,14 +6,7 @@ function Sidebar({ isCollapsed, toggleSidebar }) {
     <>
       <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         <nav className="sidebar-nav">
-          <NavLink 
-            to="/home" 
-            className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'}
-            title="Home"
-          >
-            <span className="icon">🏠</span>
-            <span>Home</span>
-          </NavLink>
+          
           <NavLink 
             to="/dashboard" 
             className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'}
