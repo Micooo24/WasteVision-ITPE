@@ -21,7 +21,7 @@ const upload = multer({
         }
         cb(null, true);
     },
-    limits: { fileSize: 100 * 1024 * 1024 } // 100MB file size limit
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB file size limit
 });
 
 // Helper function to upload a buffer to Cloudinary
