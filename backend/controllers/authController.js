@@ -61,7 +61,7 @@ exports.register = async (req, res) => {
         // If a file is uploaded, handle it
         if (req.file) {
             // Upload the file buffer to Cloudinary
-            const result = await uploadToCloudinary(req.file.buffer);
+            const result = await uploadToCloudinary(req.file.buffer, "wastevision-avatars");
             userData.avatar = {
                 public_id: result.public_id,
                 url: result.secure_url

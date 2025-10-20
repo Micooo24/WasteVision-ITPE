@@ -25,12 +25,12 @@ const upload = multer({
 });
 
 // Helper function to upload a buffer to Cloudinary
-const uploadToCloudinary = (fileBuffer) => {
+const uploadToCloudinary = (fileBuffer, folderName) => {
     return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
             {
-                folder: "wastevision-avatars",
-                transformation: [{ width: 150, height: 150, crop: "limit" }]
+                folder: folderName, // Use the dynamic folder name
+                transformation: [{ width: 500, height: 500, crop: "limit" }] // A more generic transformation
             },
             (error, result) => {
                 if (error) {

@@ -2,17 +2,16 @@ const UserActivity = require("../models/userActivity");
 const User = require("../models/user");
 const cloudinary = require("../configs/cloudinary");
 const fs = require("fs");
+const { uploadToCloudinary } = require("../configs/cloudinary"); // Import the helper
 
 exports.saveRecord = async (req, res) => {
   try {
     if (!req.body) throw new Error("undefined body");
     if (!req.file) throw new Error("File is undefined");
-        // console.log(req.user)
 
-    const uploads = await cloudinary.uploader.upload(req.file.path, {
-      folder: "wasteVision",
-    });
-    if (!uploads) throw new Error("failed to upload the image");
+    // Upload using the standardized helper function
+    const result = await uploadToCloudinary(req.file.buffer, "wasteVision");
+    if (!result) throw new Error("failed to upload the image");
 
     // Parse the items JSON string to array
     let itemsArray;
@@ -22,24 +21,17 @@ exports.saveRecord = async (req, res) => {
       throw new Error("Invalid items format: " + parseError.message);
     }
 
-    // console.log("Parsed items:", itemsArray); // This should now be an array
-    // console.log("Type after parsing:", typeof itemsArray); // This should show "object"
-
     const saveResult = await UserActivity.create({
       user: req.user.id,
       items: itemsArray, // Use the parsed array here
       image: {
-        public_id: uploads.public_id,
-        url: uploads.url,
+        public_id: result.public_id,
+        url: result.secure_url, // Use secure_url from the result
       },
       isSave: true,
     });
 
-    // No need to call save() again after create()
-    // await saveResult.save() - Remove this line
-
     if (!saveResult) throw new Error("failed to save the result");
-    fs.unlink(req.file.path, () => {});
 
     return res.status(201).json({
       success: true,
