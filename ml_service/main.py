@@ -8,6 +8,8 @@ import base64
 import logging
 import platform
 import pathlib
+import os
+from datetime import datetime
 
 # Fix for loading models trained on Linux/Mac in Windows
 if platform.system() == 'Windows':
@@ -19,11 +21,6 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="WasteVision API", description="Identify recyclable, biodegradable, and hazardous waste from images.")
 
 # Allow specific origins
-origins = [
-    "http://127.0.0.1:5500",
-    "http://localhost:5500",
-]
-
 app.add_middleware(
    CORSMiddleware,
     allow_origins=["*"],
@@ -31,6 +28,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# Create temporary_storage directory if it doesn't exist
+TEMP_STORAGE_DIR = "temporary_storage"
+os.makedirs(TEMP_STORAGE_DIR, exist_ok=True)
 
 # Load both YOLOv5 models
 MODEL_PATH_CUSTOM = "models/trained-v2.pt"
@@ -41,7 +42,7 @@ model_custom = torch.hub.load('ultralytics/yolov5', 'custom', path=MODEL_PATH_CU
 model_default = torch.hub.load('ultralytics/yolov5', 'custom', path=MODEL_PATH_DEFAULT, force_reload=False)
 logger.info("Models loaded successfully")
 
-# Detection configuration (similar to detect.py)
+# Detection configuration
 CONF_THRESHOLD = 0.15  # confidence threshold
 IOU_THRESHOLD = 0.15   # NMS IoU threshold
 MAX_DETECTIONS = 1000  # maximum detections per image
@@ -67,7 +68,7 @@ WASTE_CLASSES = {
     "zebra": "not waste",
     "giraffe": "not waste",
 
-    # Vehicles - hazardous (large waste items with fluids/batteries)
+    # Vehicles - hazardous
     "bicycle": "hazardous",
     "car": "hazardous",
     "motorcycle": "hazardous",
@@ -77,7 +78,7 @@ WASTE_CLASSES = {
     "truck": "hazardous",
     "boat": "hazardous",
 
-    # Street items - recyclable/hazardous
+    # Street items
     "traffic light": "hazardous",
     "fire hydrant": "recyclable",
     "stop sign": "recyclable",
@@ -164,6 +165,17 @@ async def identify(file: UploadFile = File(...)):
         # Read image
         image_bytes = await file.read()
         logger.info(f"Image size: {len(image_bytes)} bytes")
+        
+        # Save uploaded image to temporary_storage
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        original_filename = file.filename or "uploaded_image.jpg"
+        saved_filename = f"{timestamp}_{original_filename}"
+        saved_filepath = os.path.join(TEMP_STORAGE_DIR, saved_filename)
+        
+        with open(saved_filepath, "wb") as f:
+            f.write(image_bytes)
+        logger.info(f"Image saved to: {saved_filepath}")
+        
         image = Image.open(io.BytesIO(image_bytes))
         logger.info(f"Image dimensions: {image.size}")
 
@@ -267,13 +279,18 @@ async def identify(file: UploadFile = File(...)):
         buffered_default = io.BytesIO()
         image_default.save(buffered_default, format="PNG")
         img_default_str = base64.b64encode(buffered_default.getvalue()).decode()
-        # print(custom_response)
+
         logger.info("Request completed successfully")
         return JSONResponse(content={
+            "custom_model": {
+                "detections": custom_response,
+                "image": f"data:image/png;base64,{img_custom_str}"  # ✅ UNCOMMENTED
+            },
             "default_model": {
                 "detections": default_response,
-                # "image": f"data:image/png;base64,{img_default_str}"
-            }
+                "image": f"data:image/png;base64,{img_default_str}"  # ✅ UNCOMMENTED
+            },
+            "saved_file": saved_filename
         })
 
     except Exception as e:
