@@ -1,10 +1,10 @@
 import '../assets/css/components.css'
-function Footer() {
+
+function Footer({ className = '' }) {
   return (
-    <footer className="footer">
+    <footer className={`footer ${className}`}>
       <div className="footer-container">
-        <p>&copy; 2025 WasteVision. All rights reserved.</p>
-        <p>Smart Waste Management Solution</p>
+        <p>&copy; {new Date().getFullYear()} WasteVision. All rights reserved.</p>
       </div>
     </footer>
   )

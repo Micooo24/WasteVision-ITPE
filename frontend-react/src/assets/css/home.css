@@ -1,5 +1,7 @@
 .home-container {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Hero Section */
@@ -212,17 +214,24 @@
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
-/* Home Footer */
+/* Home Footer - Compact Size */
 .home-footer {
   background: var(--dark-bg);
   color: white;
-  padding: 32px 20px;
+  padding: 20px;
   text-align: center;
+  margin-top: auto;
+}
+
+.home-footer .container {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .home-footer p {
   color: #9ca3af;
-  font-size: 14px;
+  font-size: 13px;
+  margin: 0;
 }
 
 /* Responsive */
