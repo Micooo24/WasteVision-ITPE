@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { apiService } from '../services/api'
+import Snackbar from '../components/Snackbar'
 import '../assets/css/auth.css'
 
 function Register() {
@@ -12,6 +13,7 @@ function Register() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [snackbar, setSnackbar] = useState({ isOpen: false, message: '', type: 'success' })
   const navigate = useNavigate()
 
   const handleChange = (e) => {
@@ -30,6 +32,11 @@ function Register() {
       return
     }
 
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -39,7 +46,15 @@ function Register() {
         password: formData.password
       })
       
-      navigate('/login')
+      setSnackbar({
+        isOpen: true,
+        message: 'Registration successful! Redirecting to login...',
+        type: 'success'
+      })
+      
+      setTimeout(() => {
+        navigate('/login')
+      }, 2000)
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.')
     } finally {
@@ -50,7 +65,7 @@ function Register() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Register for WasteVision</h2>
+        <h2>Create Account</h2>
         {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -87,6 +102,7 @@ function Register() {
               onChange={handleChange}
               required
               placeholder="Enter your password"
+              minLength="6"
             />
           </div>
           <div className="form-group">
@@ -99,16 +115,24 @@ function Register() {
               onChange={handleChange}
               required
               placeholder="Confirm your password"
+              minLength="6"
             />
           </div>
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? 'Creating Account...' : 'Register'}
           </button>
         </form>
         <p className="auth-link">
           Already have an account? <Link to="/login">Login here</Link>
         </p>
       </div>
+      
+      <Snackbar
+        isOpen={snackbar.isOpen}
+        message={snackbar.message}
+        type={snackbar.type}
+        onClose={() => setSnackbar({ ...snackbar, isOpen: false })}
+      />
     </div>
   )
 }

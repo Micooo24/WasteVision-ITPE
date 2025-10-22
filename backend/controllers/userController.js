@@ -142,7 +142,6 @@ exports.saveRecord = async (req, res) => {
 
 exports.fetchRecords = async (req, res) => {
   try {
-    console.log(req.user)
     const userId = req.user.id;
     
     const records = await UserActivity.find({ user: userId })

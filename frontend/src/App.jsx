@@ -27,8 +27,14 @@ function App() {
     return <div className="loading">Loading...</div>
   }
 
+  // Protected routes - requires authentication
   const PrivateRoute = ({ children }) => {
     return isAuthenticated ? children : <Navigate to="/login" />
+  }
+
+  // Public routes - redirects to dashboard if already logged in
+  const PublicRoute = ({ children }) => {
+    return isAuthenticated ? <Navigate to="/dashboard" /> : children
   }
 
   return (
@@ -36,8 +42,16 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/home" element={<Home />} />
-        <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={
+          <PublicRoute>
+            <Login setIsAuthenticated={setIsAuthenticated} />
+          </PublicRoute>
+        } />
+        <Route path="/register" element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        } />
         <Route path="/dashboard" element={
           <PrivateRoute>
             <Dashboard />

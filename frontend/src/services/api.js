@@ -113,8 +113,8 @@ export const apiService = MOCK_MODE ? {
   getRecordById: (id) => api.get(`/user/user-records/${id}`),
   
   // User Profile
-  getProfile: () => api.get('/user/profile'),
-  updateProfile: (data) => api.put('/user/profile', data),
+  getProfile: () => api.get('/auth/profile'),
+  updateProfile: (data) => api.put('/auth/profile', data),
   
   // Tips
   getTips: () => api.get('/tips'),

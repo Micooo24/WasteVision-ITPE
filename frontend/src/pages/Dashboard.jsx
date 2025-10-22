@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
+import Snackbar from '../components/Snackbar'
 import { apiService } from '../services/api'
 import '../assets/css/dashboard.css'
 
@@ -13,6 +14,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [statistics, setStatistics] = useState(null)
+  const [snackbar, setSnackbar] = useState({ isOpen: false, message: '', type: 'success' })
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
@@ -56,8 +58,6 @@ function Dashboard() {
     setResult(null);
     
     try {
-      // TODO: Integrate with ML service at http://localhost:5000/identify
-      // For now using mock classification
       const mockClassification = {
         wasteType: 'Plastic Bottle',
         category: 'Recyclable',
@@ -67,13 +67,11 @@ function Dashboard() {
         description: 'PET plastic bottle - can be recycled'
       };
       
-      // Save the record using the API
       const response = await apiService.classifyWaste(
         selectedFile,
         mockClassification
       );
       
-      // Set result from backend response
       setResult({
         category: response.data.category,
         confidence: response.data.confidence,
@@ -81,12 +79,16 @@ function Dashboard() {
         disposal_instructions: response.data.disposal_instructions
       });
       
-      // Clear form
       setSelectedFile(null);
       setPreview(null);
       
-      // Refresh statistics
       fetchStatistics();
+      
+      setSnackbar({
+        isOpen: true,
+        message: 'Waste classified and saved successfully!',
+        type: 'success'
+      })
       
     } catch (err) {
       console.error('Error classifying waste:', err);
@@ -171,7 +173,14 @@ function Dashboard() {
           )}
         </main>
       </div>
-       <Footer className={isCollapsed ? 'collapsed' : ''} />
+      <Footer className={isCollapsed ? 'collapsed' : ''} />
+      
+      <Snackbar
+        isOpen={snackbar.isOpen}
+        message={snackbar.message}
+        type={snackbar.type}
+        onClose={() => setSnackbar({ ...snackbar, isOpen: false })}
+      />
     </div>
   )
 }

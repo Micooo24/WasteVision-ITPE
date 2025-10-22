@@ -326,11 +326,61 @@
   max-width: 600px;
 }
 
+.profile-form .form-group {
+  margin-bottom: 24px;
+}
+
+.profile-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.profile-form input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.profile-form input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.profile-form input.input-disabled {
+  background-color: #f5f5f5;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.profile-form .form-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.profile-form .form-description {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 16px;
+  font-style: italic;
+}
+
 .profile-form h3 {
   margin-top: 32px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   font-size: 20px;
   font-weight: 700;
+  color: var(--text-primary);
+}
+
+.profile-form h3:first-child {
+  margin-top: 0;
 }
 
 .profile-form hr {
@@ -338,6 +388,17 @@
   border-top: 1px solid var(--border-color);
   margin: 32px 0;
 }
+
+.success-message {
+  background: #d1fae5;
+  color: #065f46;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 500;
+}
+
 
 @keyframes slideUp {
   from {

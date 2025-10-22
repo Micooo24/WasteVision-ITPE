@@ -1,14 +1,26 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { logout, getUser } from '../services/auth'
 import '../assets/css/components.css'
+import LogoutModal from './LogoutModal'
 
 function Navbar() {
   const user = getUser()
+  const navigate = useNavigate()
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
-  const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      logout()
-    }
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true)
+  }
+
+  const handleLogoutConfirm = () => {
+    logout()
+    setShowLogoutModal(false)
+    navigate('/login')
+  }
+
+  const handleLogoutCancel = () => {
+    setShowLogoutModal(false)
   }
 
   return (
@@ -24,9 +36,15 @@ function Navbar() {
               <span className="navbar-user">
                 {user?.name || 'User'}
               </span>
-              <button onClick={handleLogout} className="btn btn-logout">
+              <button onClick={handleLogoutClick} className="btn btn-logout">
                 Logout
               </button>
+
+              <LogoutModal 
+                isOpen={showLogoutModal}
+                onConfirm={handleLogoutConfirm}
+                onCancel={handleLogoutCancel}
+              />
             </>
           )}
         </div>
