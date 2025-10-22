@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "start": "nodemon server.js",
+    "services": "start-all.bat"
   },
   "keywords": [],
   "author": "",
@@ -21,5 +22,8 @@
     "multer": "^2.0.2",
     "nodemon": "^3.1.10",
     "validator": "^13.15.15"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
