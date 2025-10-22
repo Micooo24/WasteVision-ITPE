@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const MOCK_MODE = false;
 
 const api = axios.create({
@@ -58,7 +58,7 @@ export const apiService = MOCK_MODE ? {
   register: (userData) => {
     return Promise.resolve({ data: { message: 'User registered' } });
   },
-  classifyWaste: () => {
+  classifyWaste: (imageFile, classificationData) => {
     return Promise.resolve({
       data: {
         category: 'Plastic',
@@ -84,13 +84,33 @@ export const apiService = MOCK_MODE ? {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
   
-  // Waste Classification
-  classifyWaste: (formData) => api.post('/waste/classify', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  // Waste Classification - Updated to match backend expectations
+  classifyWaste: (imageFile, classificationData) => {
+    const formData = new FormData();
+    
+    // Add the image file
+    formData.append('image', imageFile);
+    
+    // Add classification data fields
+    if (classificationData) {
+      if (classificationData.wasteType) formData.append('wasteType', classificationData.wasteType);
+      if (classificationData.category) formData.append('category', classificationData.category);
+      if (classificationData.confidence !== undefined) formData.append('confidence', classificationData.confidence);
+      if (classificationData.recyclable !== undefined) formData.append('recyclable', classificationData.recyclable);
+      if (classificationData.disposalMethod) formData.append('disposalMethod', classificationData.disposalMethod);
+      if (classificationData.description) formData.append('description', classificationData.description);
+    }
+    
+    return api.post('/user/save-record', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   
   // History
-  getHistory: () => api.get('/waste/history'),
+  getHistory: () => api.get('/user/user-records'),
+  
+  // Get specific record
+  getRecordById: (id) => api.get(`/user/user-records/${id}`),
   
   // User Profile
   getProfile: () => api.get('/user/profile'),

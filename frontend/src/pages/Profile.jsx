@@ -123,44 +123,6 @@ function Profile() {
 
               <hr />
 
-              <h3>Change Password</h3>
-
-              <div className="form-group">
-                <label htmlFor="currentPassword">Current Password</label>
-                <input
-                  type="password"
-                  id="currentPassword"
-                  name="currentPassword"
-                  value={formData.currentPassword}
-                  onChange={handleChange}
-                  placeholder="Leave blank to keep current password"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="newPassword">New Password</label>
-                <input
-                  type="password"
-                  id="newPassword"
-                  name="newPassword"
-                  value={formData.newPassword}
-                  onChange={handleChange}
-                  placeholder="Leave blank to keep current password"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="confirmPassword">Confirm New Password</label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Leave blank to keep current password"
-                />
-              </div>
-
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? 'Updating...' : 'Update Profile'}
               </button>

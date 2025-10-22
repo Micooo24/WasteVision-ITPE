@@ -9,6 +9,7 @@ function History() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
@@ -20,13 +21,34 @@ function History() {
 
   const fetchHistory = async () => {
     try {
+      setLoading(true)
       const response = await apiService.getHistory()
-      setHistory(response.data)
-    } catch (error) {
-      console.error('Error fetching history:', error)
+      
+      // Check if response.data is an array or has a records property
+      const records = Array.isArray(response.data) 
+        ? response.data 
+        : response.data.records || []
+      
+      setHistory(records)
+      setError('')
+    } catch (err) {
+      console.error('Error fetching history:', err)
+      setError('Failed to load history. Please try again.')
+      setHistory([])
     } finally {
       setLoading(false)
     }
+  }
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   return (
@@ -40,23 +62,49 @@ function History() {
           </div>
 
           {loading ? (
-            <div className="loading">Loading history...</div>
+            <div className="loading-message">Loading history...</div>
+          ) : error ? (
+            <div className="error-message">{error}</div>
           ) : history.length === 0 ? (
-            <div className="empty-state">
-              <p>No classification history yet. Start by uploading waste images!</p>
+            <div className="empty-message">
+              <p>No classification history yet. Start classifying waste to see your history here.</p>
             </div>
           ) : (
             <div className="history-grid">
-              {history.map((item, index) => (
-                <div key={index} className="history-card">
-                  {item.image_url && (
-                    <img src={item.image_url} alt="Waste" className="history-image" />
+              {history.map((record) => (
+                <div key={record._id} className="history-card">
+                  {record.image && (
+                    <div className="history-image">
+                      <img src={record.image.url} alt="Classified waste" />
+                    </div>
                   )}
-                  <div className="history-details">
-                    <p><strong>Category:</strong> {item.category}</p>
-                    <p><strong>Confidence:</strong> {item.confidence}%</p>
-                    <p><strong>Recyclable:</strong> {item.recyclable ? 'Yes' : 'No'}</p>
-                    <p className="history-date">{new Date(item.created_at).toLocaleString()}</p>
+                  <div className="history-content">
+                    <div className="history-date">
+                      {formatDate(record.createdAt)}
+                    </div>
+                    {record.items && record.items.length > 0 && (
+                      <div className="history-details">
+                        {record.items.map((item, index) => (
+                          <div key={index} className="item-detail">
+                            <p><strong>Item:</strong> {item.item}</p>
+                            <p><strong>Type:</strong> {item.type}</p>
+                            <p><strong>Confidence:</strong> {item.confidence}%</p>
+                            <p>
+                              <strong>Recyclable:</strong>{' '}
+                              <span className={item.recyclable ? 'recyclable' : 'non-recyclable'}>
+                                {item.recyclable ? 'Yes' : 'No'}
+                              </span>
+                            </p>
+                            {item.disposalMethod && (
+                              <p><strong>Disposal:</strong> {item.disposalMethod}</p>
+                            )}
+                            {item.description && (
+                              <p><strong>Description:</strong> {item.description}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

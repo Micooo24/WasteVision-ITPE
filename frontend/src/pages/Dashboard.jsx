@@ -11,6 +11,7 @@ function Dashboard() {
   const [preview, setPreview] = useState(null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [statistics, setStatistics] = useState(null)
 
   const toggleSidebar = () => {
@@ -43,26 +44,57 @@ function Dashboard() {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!selectedFile) return
-
-    setLoading(true)
-    setResult(null)
-
-    const formData = new FormData()
-    formData.append('image', selectedFile)
-
-    try {
-      const response = await apiService.classifyWaste(formData)
-      setResult(response.data)
-      fetchStatistics() // Refresh statistics
-    } catch (error) {
-      console.error('Error classifying waste:', error)
-      setResult({ error: 'Failed to classify waste. Please try again.' })
-    } finally {
-      setLoading(false)
+    e.preventDefault();
+    
+    if (!selectedFile) {
+      setError('Please select an image');
+      return;
     }
-  }
+    
+    setLoading(true);
+    setError('');
+    setResult(null);
+    
+    try {
+      // TODO: Integrate with ML service at http://localhost:5000/identify
+      // For now using mock classification
+      const mockClassification = {
+        wasteType: 'Plastic Bottle',
+        category: 'Recyclable',
+        confidence: 95,
+        recyclable: true,
+        disposalMethod: 'Place in blue recycling bin',
+        description: 'PET plastic bottle - can be recycled'
+      };
+      
+      // Save the record using the API
+      const response = await apiService.classifyWaste(
+        selectedFile,
+        mockClassification
+      );
+      
+      // Set result from backend response
+      setResult({
+        category: response.data.category,
+        confidence: response.data.confidence,
+        recyclable: response.data.recyclable,
+        disposal_instructions: response.data.disposal_instructions
+      });
+      
+      // Clear form
+      setSelectedFile(null);
+      setPreview(null);
+      
+      // Refresh statistics
+      fetchStatistics();
+      
+    } catch (err) {
+      console.error('Error classifying waste:', err);
+      setError(err.response?.data?.error || 'Failed to classify waste. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="app-container">
@@ -93,6 +125,7 @@ function Dashboard() {
 
           <div className="upload-section">
             <h3>Upload Waste Image</h3>
+            {error && <div className="error-message">{error}</div>}
             <form onSubmit={handleSubmit}>
               <div className="file-input-container">
                 <input
@@ -126,18 +159,14 @@ function Dashboard() {
           {result && (
             <div className="result-section">
               <h3>Classification Result</h3>
-              {result.error ? (
-                <div className="error-message">{result.error}</div>
-              ) : (
-                <div className="result-card">
-                  <p><strong>Category:</strong> {result.category}</p>
-                  <p><strong>Confidence:</strong> {result.confidence}%</p>
-                  <p><strong>Recyclable:</strong> {result.recyclable ? 'Yes' : 'No'}</p>
-                  {result.disposal_instructions && (
-                    <p><strong>Disposal Instructions:</strong> {result.disposal_instructions}</p>
-                  )}
-                </div>
-              )}
+              <div className="result-card">
+                <p><strong>Category:</strong> {result.category}</p>
+                <p><strong>Confidence:</strong> {result.confidence}%</p>
+                <p><strong>Recyclable:</strong> {result.recyclable ? 'Yes' : 'No'}</p>
+                {result.disposal_instructions && (
+                  <p><strong>Disposal Instructions:</strong> {result.disposal_instructions}</p>
+                )}
+              </div>
             </div>
           )}
         </main>

@@ -184,46 +184,93 @@
 .history-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
+  gap: 1.5rem;
+  margin-top: 2rem;
 }
 
 .history-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: var(--transition);
+  transition: transform 0.2s;
 }
 
 .history-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .history-image {
   width: 100%;
   height: 200px;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.history-image img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
 
-.history-details {
-  padding: 20px;
-}
-
-.history-details p {
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.history-details strong {
-  font-weight: 600;
+.history-content {
+  padding: 1rem;
 }
 
 .history-date {
-  font-size: 12px !important;
-  color: var(--text-secondary) !important;
-  margin-top: 12px;
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.history-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.item-detail {
+  font-size: 0.95rem;
+}
+
+.item-detail p {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}
+
+.item-detail strong {
+  color: #333;
+  font-weight: 600;
+}
+
+.recyclable {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.non-recyclable {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.loading-message,
+.empty-message {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.error-message {
+  background: #fee;
+  color: #c33;
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+  text-align: center;
 }
 
 /* Tips Grid */
