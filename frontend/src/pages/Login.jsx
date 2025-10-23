@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { apiService } from '../services/api'
 import { saveToken, saveUser } from '../services/auth'
 import '../assets/css/auth.css'
@@ -9,7 +10,6 @@ function Login({ setIsAuthenticated }) {
     email: '',
     password: ''
   })
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
@@ -22,8 +22,9 @@ function Login({ setIsAuthenticated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
     setLoading(true)
+
+    const loadingToast = toast.loading('Logging in...')
 
     try {
       const response = await apiService.login(formData)
@@ -32,9 +33,19 @@ function Login({ setIsAuthenticated }) {
       saveToken(token)
       saveUser(user)
       setIsAuthenticated(true)
+      
+      toast.success(`Welcome back, ${user.name}!`, {
+        id: loadingToast,
+        duration: 3000,
+      })
+      
       navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.')
+      const errorMessage = err.response?.data?.message || 'Login failed. Please try again.'
+      toast.error(errorMessage, {
+        id: loadingToast,
+        duration: 4000,
+      })
     } finally {
       setLoading(false)
     }
@@ -44,7 +55,6 @@ function Login({ setIsAuthenticated }) {
     <div className="auth-container">
       <div className="auth-card">
         <h2>Login to WasteVision</h2>
-        {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email</label>

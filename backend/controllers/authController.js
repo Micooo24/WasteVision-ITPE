@@ -169,7 +169,13 @@ exports.getProfile = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      user: user
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar?.url || user.avatar || null, // Return avatar URL or null
+        role: user.role
+      }
     });
   } catch (error) {
     console.log("Error in getProfile:", error.message);

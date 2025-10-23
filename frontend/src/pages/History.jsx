@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
 import { apiService } from '../services/api'
 import '../assets/css/dashboard.css'
+import toast from 'react-hot-toast'
 
 function History() {
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -32,7 +33,7 @@ function History() {
       setHistory(records)
       setError('')
     } catch (err) {
-      console.error('Error fetching history:', err)
+      toast.error('Error fetching history: ' + (err.message || 'Unknown error'))
       setError('Failed to load history. Please try again.')
       setHistory([])
     } finally {

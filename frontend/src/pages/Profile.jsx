@@ -12,10 +12,13 @@ function Profile() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    avatar: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   })
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [avatarPreview, setAvatarPreview] = useState(null)
   const [snackbar, setSnackbar] = useState({ isOpen: false, message: '', type: 'success' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -36,7 +39,8 @@ function Profile() {
       setFormData({
         ...formData,
         name: user.name || '',
-        email: user.email || ''
+        email: user.email || '',
+        avatar: user.avatar || ''
       })
     } catch (err) {
       console.error('Error fetching profile:', err)
@@ -45,7 +49,8 @@ function Profile() {
         setFormData({
           ...formData,
           name: localUser.name || '',
-          email: localUser.email || ''
+          email: localUser.email || '',
+          avatar: localUser.avatar || ''
         })
       }
     }
@@ -56,6 +61,33 @@ function Profile() {
       ...formData,
       [e.target.name]: e.target.value
     })
+  }
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file')
+        return
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size should be less than 5MB')
+        return
+      }
+
+      setAvatarFile(file)
+      
+      // Create preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result)
+      }
+      reader.readAsDataURL(file)
+      setError('')
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -87,13 +119,16 @@ function Profile() {
     setLoading(true)
 
     try {
-      const updateData = {
-        name: formData.name
+      const updateData = new FormData()
+      updateData.append('name', formData.name)
+
+      if (avatarFile) {
+        updateData.append('avatar', avatarFile)
       }
 
       if (formData.newPassword) {
-        updateData.currentPassword = formData.currentPassword
-        updateData.newPassword = formData.newPassword
+        updateData.append('currentPassword', formData.currentPassword)
+        updateData.append('newPassword', formData.newPassword)
       }
 
       const response = await apiService.updateProfile(updateData)
@@ -107,16 +142,21 @@ function Profile() {
       
       setFormData({
         ...formData,
+        avatar: response.data.user.avatar || formData.avatar,
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
       })
+      setAvatarFile(null)
+      setAvatarPreview(null)
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update profile')
     } finally {
       setLoading(false)
     }
   }
+
+  const displayAvatar = avatarPreview || formData.avatar
 
   return (
     <div className="app-container">
@@ -132,6 +172,70 @@ function Profile() {
             {error && <div className="error-message">{error}</div>}
             
             <form onSubmit={handleSubmit} className="profile-form">
+              {/* Avatar Display Section */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
+                <div style={{ position: 'relative', width: '150px', height: '150px', marginBottom: '1rem' }}>
+                  {displayAvatar ? (
+                    <img 
+                      src={displayAvatar} 
+                      alt="Profile Avatar" 
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '4px solid #4caf50',
+                        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #4caf50, #45a049)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '3rem',
+                      fontWeight: 'bold',
+                      color: 'white',
+                      border: '4px solid #4caf50',
+                      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
+                    }}>
+                      {formData.name ? formData.name.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                  )}
+                </div>
+                
+                <label htmlFor="avatar-upload" style={{
+                  padding: '0.5rem 1.5rem',
+                  backgroundColor: '#4caf50',
+                  color: 'white',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  transition: 'background-color 0.3s'
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#45a049'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#4caf50'}>
+                  Change Avatar
+                </label>
+                <input
+                  type="file"
+                  id="avatar-upload"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  style={{ display: 'none' }}
+                />
+                {avatarPreview && (
+                  <small style={{ marginTop: '0.5rem', color: '#666' }}>
+                    New avatar selected. Click "Update Profile" to save.
+                  </small>
+                )}
+              </div>
+
               <h3>Personal Information</h3>
               
               <div className="form-group">

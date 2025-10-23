@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { apiService } from '../services/api'
-import Snackbar from '../components/Snackbar'
+import toast from 'react-hot-toast'
 import '../assets/css/auth.css'
 
 function Register() {
@@ -11,9 +11,7 @@ function Register() {
     password: '',
     confirmPassword: ''
   })
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [snackbar, setSnackbar] = useState({ isOpen: false, message: '', type: 'success' })
   const navigate = useNavigate()
 
   const handleChange = (e) => {
@@ -25,19 +23,19 @@ function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
+      toast.error('Passwords do not match')
       return
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters')
+      toast.error('Password must be at least 6 characters')
       return
     }
 
     setLoading(true)
+    const loadingToast = toast.loading('Creating your account...')
 
     try {
       await apiService.register({
@@ -46,17 +44,20 @@ function Register() {
         password: formData.password
       })
       
-      setSnackbar({
-        isOpen: true,
-        message: 'Registration successful! Redirecting to login...',
-        type: 'success'
+      toast.success('Registration successful! Redirecting to login...', {
+        id: loadingToast,
+        duration: 2000,
       })
       
       setTimeout(() => {
         navigate('/login')
       }, 2000)
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.')
+      const errorMessage = err.response?.data?.message || 'Registration failed. Please try again.'
+      toast.error(errorMessage, {
+        id: loadingToast,
+        duration: 4000,
+      })
     } finally {
       setLoading(false)
     }
@@ -66,7 +67,6 @@ function Register() {
     <div className="auth-container">
       <div className="auth-card">
         <h2>Create Account</h2>
-        {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="name">Full Name</label>
@@ -126,13 +126,6 @@ function Register() {
           Already have an account? <Link to="/login">Login here</Link>
         </p>
       </div>
-      
-      <Snackbar
-        isOpen={snackbar.isOpen}
-        message={snackbar.message}
-        type={snackbar.type}
-        onClose={() => setSnackbar({ ...snackbar, isOpen: false })}
-      />
     </div>
   )
 }
