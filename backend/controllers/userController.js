@@ -1,135 +1,71 @@
-const UserActivity = require("../models/userActivity");
 const User = require("../models/user");
-const cloudinary = require("../configs/cloudinary");
-const fs = require("fs");
-const { uploadToCloudinary } = require("../configs/cloudinary"); // Import the helper
+const UserActivity = require("../models/userActivity");
+const { uploadToCloudinary } = require("../configs/cloudinary");
 
-// exports.saveRecord = async (req, res) => {
-//   try {
-//     if (!req.body) throw new Error("undefined body");
-//     if (!req.file) throw new Error("File is undefined");
-
-//     // Upload using the standardized helper function
-//     const result = await uploadToCloudinary(req.file.buffer, "wasteVision");
-//     if (!result) throw new Error("failed to upload the image");
-
-//     // Parse the items JSON string to array
-//     let itemsArray;
-//     try {
-//       itemsArray = JSON.parse(req.body.items);
-//     } catch (parseError) {
-//       throw new Error("Invalid items format: " + parseError.message);
-//     }
-
-//     const saveResult = await UserActivity.create({
-//       user: req.user.id,
-//       items: itemsArray, // Use the parsed array here
-//       image: {
-//         public_id: result.public_id,
-//         url: result.secure_url, // Use secure_url from the result
-//       },
-//       isSave: true,
-//     });
-
-//     if (!saveResult) throw new Error("failed to save the result");
-
-//     return res.status(201).json({
-//       success: true,
-//       record: saveResult,
-//     });
-//   } catch (error) {
-//     console.log(error.message);
-//     return res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-
-
-
-//hardcode
-// exports.saveRecord = async (req, res) => {
-//   try {
-//     if (!req.body) throw new Error("undefined body");
-//     if (!req.file) throw new Error("File is undefined");
-
-//     // Upload using the standardized helper function
-//     const uploads = await uploadToCloudinary(req.file.buffer, "wasteVision");
-//     if (!uploads) throw new Error("failed to upload the image");
-
-//     // Hardcoded items for testing purposes
-//     const itemsArray = [
-//       { item: "Test Item 1", type: "Recyclable", confidence: 0.99 },
-//       { item: "Test Item 2", type: "Organic", confidence: 0.98 }
-//     ];
-
-//     const saveResult = await UserActivity.create({
-//       user: req.user.id,
-//       items: itemsArray, // Use the hardcoded array here
-//       image: {
-//         public_id: uploads.public_id,
-//         url: uploads.secure_url, // Use secure_url from the result
-//       },
-//       isSave: true,
-//     });
-
-//     if (!saveResult) throw new Error("failed to save the result");
-
-//     return res.status(201).json({
-//       success: true,
-//       record: saveResult,
-//     });
-//   } catch (error) {
-//     console.log(error.message);
-//     return res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-
-
-//test
+// Save waste classification record
 exports.saveRecord = async (req, res) => {
   try {
     if (!req.body) throw new Error("undefined body");
     if (!req.file) throw new Error("File is undefined");
 
-    // Upload using the standardized helper function
-    const uploads = await uploadToCloudinary(req.file.buffer, "wasteVision");
-    if (!uploads) throw new Error("failed to upload the image");
-
     // Extract classification data from request body
-    const { wasteType, category, confidence, recyclable, disposalMethod, description } = req.body;
+    const { wasteType, category, confidence, recyclable, disposalMethod, description, detectedImageBase64 } = req.body;
 
-    // Create items array from the classification data
-    const itemsArray = [{
-      item: wasteType || "Unknown",
-      type: category || "Unknown",
-      confidence: confidence || 0,
-      recyclable: recyclable === 'true' || recyclable === true,
-      disposalMethod: disposalMethod || "",
-      description: description || ""
-    }];
+    // Upload original image
+    const originalImage = await uploadToCloudinary(req.file.buffer, "wasteVision/originals");
+    if (!originalImage) throw new Error("Failed to upload original image");
 
+    // Upload detected image with bounding boxes if provided
+    let detectedImage = null;
+    if (detectedImageBase64) {
+      // Remove the data:image/png;base64, prefix if present
+      const base64Data = detectedImageBase64.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      detectedImage = await uploadToCloudinary(buffer, "wasteVision/detected");
+      if (!detectedImage) {
+        console.warn("Failed to upload detected image, continuing without it");
+      }
+    }
+
+    // Parse confidence - should be stored as decimal (0-1) not percentage
+    const confidenceValue = parseFloat(confidence) || 0;
+    const normalizedConfidence = confidenceValue > 1 ? confidenceValue / 100 : confidenceValue;
+
+    // Parse recyclable - handle both string and boolean
+    const isRecyclable = recyclable === true || recyclable === 'true';
+
+    // Create the record
     const saveResult = await UserActivity.create({
       user: req.user.id,
-      items: itemsArray,
+      items: [{
+        item: wasteType || 'Unknown',
+        type: category || 'Unknown',
+        confidence: normalizedConfidence, // Store as decimal (0-1)
+        recyclable: isRecyclable,
+        disposalMethod: disposalMethod || '',
+        description: description || ''
+      }],
       image: {
-        public_id: uploads.public_id,
-        url: uploads.secure_url,
+        public_id: originalImage.public_id,
+        url: originalImage.secure_url,
       },
+      detectedImage: detectedImage ? {
+        public_id: detectedImage.public_id,
+        url: detectedImage.secure_url,
+      } : null,
       isSave: true,
     });
 
-    if (!saveResult) throw new Error("failed to save the result");
+    if (!saveResult) throw new Error("Failed to save the result");
 
     return res.status(201).json({
       success: true,
       record: saveResult,
       category: category,
-      confidence: confidence,
-      recyclable: recyclable === 'true' || recyclable === true,
-      disposal_instructions: disposalMethod
+      confidence: normalizedConfidence,
+      recyclable: isRecyclable,
+      disposal_instructions: disposalMethod || '',
     });
   } catch (error) {
     console.log("Error in saveRecord:", error.message);
@@ -140,56 +76,52 @@ exports.saveRecord = async (req, res) => {
   }
 };
 
+// Fetch all user records
 exports.fetchRecords = async (req, res) => {
   try {
-    const userId = req.user.id;
-    
-    const records = await UserActivity.find({ user: userId })
-      .sort({ createdAt: -1 }) // Most recent first
-      .select("items image createdAt") // Only select needed fields
-      .lean(); // Convert to plain JavaScript objects
+    const records = await UserActivity.find({ user: req.user.id })
+      .sort({ createdAt: -1 })
+      .lean();
 
-    // console.log(`Found ${records.length} records for user ${userId}`);
-
-    res.json({
+    return res.status(200).json({
       success: true,
       records: records,
     });
   } catch (error) {
-    console.error("Error fetching user records:", error);
-    res.status(500).json({
+    console.log("Error in fetchRecords:", error.message);
+    return res.status(500).json({ 
       success: false,
-      error: "Failed to fetch user records",
+      error: error.message 
     });
   }
 };
 
+// Fetch a single record by ID
 exports.fetchRecordById = async (req, res) => {
   try {
-    const recordId = req.params.id;
-    const userId = req.user.id;
-
-    const record = await UserActivity.findOne({
-      _id: recordId,
-      user: userId,
-    });
+    const { id } = req.params;
+    
+    const record = await UserActivity.findOne({ 
+      _id: id, 
+      user: req.user.id 
+    }).lean();
 
     if (!record) {
       return res.status(404).json({
         success: false,
-        error: "Record not found",
+        message: "Record not found"
       });
     }
 
-    res.json({
+    return res.status(200).json({
       success: true,
       record: record,
     });
   } catch (error) {
-    console.error("Error fetching record:", error);
-    res.status(500).json({
+    console.log("Error in fetchRecordById:", error.message);
+    return res.status(500).json({ 
       success: false,
-      error: "Failed to fetch record",
+      error: error.message 
     });
   }
 };
