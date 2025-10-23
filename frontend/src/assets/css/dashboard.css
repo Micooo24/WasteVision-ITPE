@@ -104,7 +104,16 @@
 }
 
 .file-input-container {
-  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.file-name {
+  color: #666;
+  font-size: 0.9rem;
+  font-style: italic;
 }
 
 .file-input {
@@ -145,10 +154,10 @@
 /* Result Section */
 .result-section {
   background: white;
-  padding: 32px;
+  padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  animation: slideUp 0.3s ease-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 2rem;
 }
 
 .result-section h3 {
@@ -159,10 +168,10 @@
 }
 
 .result-card {
-  background: #f0fdf4;
-  padding: 24px;
-  border-radius: var(--radius);
-  border-left: 4px solid var(--primary-color);
+  background: #f9fafb;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #4CAF50;
 }
 
 .result-card p {
@@ -409,4 +418,213 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Detected Images Section */
+.detected-images-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 2rem;
+}
+
+.detected-images-section h3 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.model-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.tab-btn {
+  padding: 0.75rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.3s;
+  position: relative;
+  bottom: -2px;
+}
+
+.tab-btn:hover:not(:disabled) {
+  color: #4CAF50;
+}
+
+.tab-btn.active {
+  color: #4CAF50;
+  border-bottom-color: #4CAF50;
+}
+
+.tab-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.detected-image-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.detected-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* All Detections Section */
+.all-detections-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 2rem;
+}
+
+.all-detections-section h3 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.detections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.detection-card {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.detection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.detection-item {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 1rem;
+}
+
+.detection-type {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.detection-type.recyclable {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.detection-type.biodegradable {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.detection-type.hazardous {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.detection-type.unknown {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.detection-confidence {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.confidence-bar {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #81c784);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.category-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.category-badge.recyclable {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.category-badge.biodegradable {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.category-badge.hazardous {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.category-badge.unknown {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.recyclable-yes {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.recyclable-no {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.disposal-instructions {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 6px;
+  border-left: 3px solid #3b82f6;
+}
+
+.disposal-instructions p {
+  margin: 0.5rem 0 0 0;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.description {
+  margin-top: 1rem;
+  color: #6b7280;
+  font-style: italic;
 }

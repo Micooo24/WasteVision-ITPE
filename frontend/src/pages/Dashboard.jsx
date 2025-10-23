@@ -15,6 +15,9 @@ function Dashboard() {
   const [error, setError] = useState('')
   const [statistics, setStatistics] = useState(null)
   const [snackbar, setSnackbar] = useState({ isOpen: false, message: '', type: 'success' })
+  const [detectedImages, setDetectedImages] = useState({ custom: null, default: null })
+  const [allDetections, setAllDetections] = useState([])
+  const [activeModel, setActiveModel] = useState('custom') // 'custom' or 'default'
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
@@ -42,6 +45,10 @@ function Dashboard() {
         setPreview(reader.result)
       }
       reader.readAsDataURL(file)
+      // Reset results when new file is selected
+      setResult(null)
+      setDetectedImages({ custom: null, default: null })
+      setAllDetections([])
     }
   }
 
@@ -56,32 +63,42 @@ function Dashboard() {
     setLoading(true);
     setError('');
     setResult(null);
+    setDetectedImages({ custom: null, default: null });
+    setAllDetections([]);
     
     try {
-      const mockClassification = {
-        wasteType: 'Plastic Bottle',
-        category: 'Recyclable',
-        confidence: 95,
-        recyclable: true,
-        disposalMethod: 'Place in blue recycling bin',
-        description: 'PET plastic bottle - can be recycled'
-      };
+      // Classify using ML service and save to backend
+      const response = await apiService.classifyWaste(selectedFile);
       
-      const response = await apiService.classifyWaste(
-        selectedFile,
-        mockClassification
-      );
-      
+      // Set result from response
+      const classification = response.data.classification || response.data;
       setResult({
-        category: response.data.category,
-        confidence: response.data.confidence,
-        recyclable: response.data.recyclable,
-        disposal_instructions: response.data.disposal_instructions
+        category: classification.category,
+        confidence: classification.confidence,
+        recyclable: classification.recyclable,
+        disposal_instructions: classification.disposalMethod,
+        wasteType: classification.wasteType,
+        description: classification.description
       });
+
+      // Set detected images with bounding boxes
+      if (response.data.customModel || response.data.defaultModel) {
+        setDetectedImages({
+          custom: response.data.customModel?.image || null,
+          default: response.data.defaultModel?.image || null
+        });
+      }
+
+      // Set all detections
+      if (response.data.allDetections) {
+        setAllDetections(response.data.allDetections);
+      }
       
-      setSelectedFile(null);
-      setPreview(null);
+      // Don't clear the form - keep the image visible
+      // setSelectedFile(null);
+      // setPreview(null);
       
+      // Refresh statistics
       fetchStatistics();
       
       setSnackbar({
@@ -92,7 +109,11 @@ function Dashboard() {
       
     } catch (err) {
       console.error('Error classifying waste:', err);
-      setError(err.response?.data?.error || 'Failed to classify waste. Please try again.');
+      const errorMessage = err.response?.data?.detail || 
+                          err.response?.data?.error ||
+                          err.message || 
+                          'Failed to classify waste. Please ensure ML service is running.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -140,10 +161,12 @@ function Dashboard() {
                 <label htmlFor="file-input" className="file-label">
                   Choose Image
                 </label>
+                {selectedFile && <span className="file-name">{selectedFile.name}</span>}
               </div>
 
-              {preview && (
+              {preview && !detectedImages.custom && !detectedImages.default && (
                 <div className="image-preview">
+                  <h4>Original Image</h4>
                   <img src={preview} alt="Preview" />
                 </div>
               )}
@@ -158,15 +181,89 @@ function Dashboard() {
             </form>
           </div>
 
+          {(detectedImages.custom || detectedImages.default) && (
+            <div className="detected-images-section">
+              <h3>Detection Results</h3>
+              
+              <div className="model-tabs">
+                <button 
+                  className={`tab-btn ${activeModel === 'custom' ? 'active' : ''}`}
+                  onClick={() => setActiveModel('custom')}
+                  disabled={!detectedImages.custom}
+                >
+                  Custom Model (trained-v2.pt)
+                </button>
+                <button 
+                  className={`tab-btn ${activeModel === 'default' ? 'active' : ''}`}
+                  onClick={() => setActiveModel('default')}
+                  disabled={!detectedImages.default}
+                >
+                  Default Model (yolov5s.pt)
+                </button>
+              </div>
+
+              <div className="detected-image-container">
+                {activeModel === 'custom' && detectedImages.custom && (
+                  <img 
+                    src={detectedImages.custom} 
+                    alt="Detected waste with bounding boxes (Custom Model)" 
+                    className="detected-image"
+                  />
+                )}
+                {activeModel === 'default' && detectedImages.default && (
+                  <img 
+                    src={detectedImages.default} 
+                    alt="Detected waste with bounding boxes (Default Model)" 
+                    className="detected-image"
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          {allDetections.length > 0 && (
+            <div className="all-detections-section">
+              <h3>All Detected Items</h3>
+              <div className="detections-grid">
+                {allDetections.map((detection, index) => (
+                  <div key={index} className="detection-card">
+                    <div className="detection-header">
+                      <span className="detection-item">{detection.item}</span>
+                      <span className={`detection-type ${detection.type?.toLowerCase()}`}>
+                        {detection.type}
+                      </span>
+                    </div>
+                    <div className="detection-confidence">
+                      Confidence: {(detection.confidence * 100).toFixed(1)}%
+                    </div>
+                    <div className="confidence-bar">
+                      <div 
+                        className="confidence-fill" 
+                        style={{ width: `${detection.confidence * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {result && (
             <div className="result-section">
-              <h3>Classification Result</h3>
+              <h3>Primary Classification Result</h3>
               <div className="result-card">
-                <p><strong>Category:</strong> {result.category}</p>
+                <p><strong>Waste Type:</strong> {result.wasteType}</p>
+                <p><strong>Category:</strong> <span className={`category-badge ${result.category?.toLowerCase()}`}>{result.category}</span></p>
                 <p><strong>Confidence:</strong> {result.confidence}%</p>
-                <p><strong>Recyclable:</strong> {result.recyclable ? 'Yes' : 'No'}</p>
+                <p><strong>Recyclable:</strong> <span className={result.recyclable ? 'recyclable-yes' : 'recyclable-no'}>{result.recyclable ? 'Yes' : 'No'}</span></p>
                 {result.disposal_instructions && (
-                  <p><strong>Disposal Instructions:</strong> {result.disposal_instructions}</p>
+                  <div className="disposal-instructions">
+                    <strong>Disposal Instructions:</strong>
+                    <p>{result.disposal_instructions}</p>
+                  </div>
+                )}
+                {result.description && (
+                  <p className="description"><strong>Description:</strong> {result.description}</p>
                 )}
               </div>
             </div>

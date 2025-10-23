@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
+const ML_SERVICE_URL = import.meta.env.VITE_ML_URL || 'http://localhost:5000'
 const MOCK_MODE = false;
 
 const api = axios.create({
@@ -10,7 +11,15 @@ const api = axios.create({
   }
 })
 
-// Add token to requests
+// ML Service API instance
+const mlApi = axios.create({
+  baseURL: ML_SERVICE_URL,
+  headers: {
+    'Content-Type': 'multipart/form-data'
+  }
+})
+
+// Add token to backend API requests
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -37,6 +46,19 @@ api.interceptors.response.use(
   }
 )
 
+// Helper function to get disposal method based on waste type
+function getDisposalMethod(wasteType) {
+  const methods = {
+    'recyclable': 'Place in blue recycling bin. Rinse and clean before recycling.',
+    'biodegradable': 'Place in green compost bin. Can be composted.',
+    'hazardous': 'Take to designated hazardous waste collection point. Do not dispose in regular bins.',
+    'not waste': 'This item does not appear to be waste.',
+    'unknown': 'Please consult local waste management for proper disposal.'
+  };
+  
+  return methods[wasteType?.toLowerCase()] || methods['unknown'];
+}
+
 // API methods
 export const apiService = MOCK_MODE ? {
   login: (credentials) => {
@@ -58,19 +80,21 @@ export const apiService = MOCK_MODE ? {
   register: (userData) => {
     return Promise.resolve({ data: { message: 'User registered' } });
   },
-  classifyWaste: (imageFile, classificationData) => {
+  classifyWaste: (imageFile) => {
     return Promise.resolve({
       data: {
-        category: 'Plastic',
+        wasteType: 'Plastic Bottle',
+        category: 'Recyclable',
         confidence: 95,
         recyclable: true,
-        disposal_instructions: 'Recycle in blue bin'
+        disposalMethod: 'Place in blue recycling bin',
+        description: 'PET plastic bottle - can be recycled'
       }
     });
   },
-  getHistory: () => Promise.resolve({ data: [] }),
-  getProfile: () => Promise.resolve({ data: {} }),
-  updateProfile: () => Promise.resolve({ data: {} }),
+  getHistory: () => Promise.resolve({ data: { records: [] } }),
+  getProfile: () => Promise.resolve({ data: { user: {} } }),
+  updateProfile: () => Promise.resolve({ data: { user: {} } }),
   getTips: () => Promise.resolve({ data: [] }),
   getStatistics: () => Promise.resolve({
     data: {
@@ -84,14 +108,21 @@ export const apiService = MOCK_MODE ? {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
   
-  // Waste Classification - Updated to match backend expectations
-  classifyWaste: (imageFile, classificationData) => {
+  // ML Service - Classify Waste
+  classifyWasteML: async (imageFile) => {
     const formData = new FormData();
-    
-    // Add the image file
+    formData.append('file', imageFile);
+    return mlApi.post('/identify', formData);
+  },
+  
+  // ML Service - Health Check
+  checkMLHealth: () => mlApi.get('/health'),
+  
+  // Backend - Save waste classification record
+  saveWasteRecord: async (imageFile, classificationData) => {
+    const formData = new FormData();
     formData.append('image', imageFile);
     
-    // Add classification data fields
     if (classificationData) {
       if (classificationData.wasteType) formData.append('wasteType', classificationData.wasteType);
       if (classificationData.category) formData.append('category', classificationData.category);
@@ -104,6 +135,72 @@ export const apiService = MOCK_MODE ? {
     return api.post('/user/save-record', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
+  },
+  
+  // Combined - Classify and Save
+  classifyWaste: async (imageFile) => {
+    try {
+      // Step 1: Classify using ML service
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      
+      const mlResponse = await mlApi.post('/identify', formData);
+      
+      // Extract data from ML service response
+      const customModel = mlResponse.data.custom_model;
+      const defaultModel = mlResponse.data.default_model;
+      
+      // Use custom model data if available, otherwise use default model
+      const modelData = customModel || defaultModel;
+      const detections = modelData?.detections || [];
+      
+      // If no detections, return a default response
+      if (detections.length === 0) {
+        throw new Error('No waste detected in the image. Please try another image.');
+      }
+      
+      // Get the first detection (highest confidence)
+      const detection = detections[0];
+      
+      // Map the detection to our format
+      const classificationData = {
+        wasteType: detection.item || 'Unknown',
+        category: detection.type || 'Unknown',
+        confidence: Math.round((detection.confidence || 0) * 100),
+        recyclable: detection.type?.toLowerCase() === 'recyclable',
+        disposalMethod: getDisposalMethod(detection.type),
+        description: `Detected as ${detection.item || 'unknown item'}`
+      };
+      
+      // Step 2: Save to backend
+      const saveFormData = new FormData();
+      saveFormData.append('image', imageFile);
+      saveFormData.append('wasteType', classificationData.wasteType);
+      saveFormData.append('category', classificationData.category);
+      saveFormData.append('confidence', classificationData.confidence);
+      saveFormData.append('recyclable', classificationData.recyclable);
+      saveFormData.append('disposalMethod', classificationData.disposalMethod);
+      saveFormData.append('description', classificationData.description);
+      
+      const saveResponse = await api.post('/user/save-record', saveFormData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      // Return combined response with bounding box image
+      return {
+        data: {
+          ...saveResponse.data,
+          classification: classificationData,
+          detectedImage: modelData?.image, // Base64 image with bounding boxes
+          allDetections: detections, // All detected items
+          customModel: customModel,
+          defaultModel: defaultModel
+        }
+      };
+    } catch (error) {
+      console.error('Error in classifyWaste:', error);
+      throw error;
+    }
   },
   
   // History
