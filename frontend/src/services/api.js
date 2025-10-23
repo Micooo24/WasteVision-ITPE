@@ -2,7 +2,6 @@ import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const ML_SERVICE_URL = import.meta.env.VITE_ML_URL || 'http://localhost:5000'
-const MOCK_MODE = false;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -38,9 +37,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Clear all auth data
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      
+      // Force reload to login page
       window.location.href = '/login'
+      
+      // Optionally show alert
+      if (!window.location.pathname.includes('/login')) {
+        alert('Your session has expired. Please login again.')
+      }
     }
     return Promise.reject(error)
   }
