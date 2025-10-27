@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import toast from 'react-hot-toast'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
+import Snackbar from '../components/Snackbar'
 import { apiService } from '../services/api'
 import '../assets/css/dashboard.css'
 
@@ -12,7 +12,9 @@ function Dashboard() {
   const [preview, setPreview] = useState(null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [statistics, setStatistics] = useState(null)
+  const [snackbar, setSnackbar] = useState({ isOpen: false, message: '', type: 'success' })
   const [detectedImages, setDetectedImages] = useState({ custom: null, default: null })
   const [allDetections, setAllDetections] = useState([])
   const [activeModel, setActiveModel] = useState('custom')
@@ -31,25 +33,12 @@ function Dashboard() {
       setStatistics(response.data)
     } catch (error) {
       console.error('Error fetching statistics:', error)
-      toast.error('Failed to fetch statistics')
     }
   }
 
   const handleFileChange = (e) => {
     const file = e.target.files[0]
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file')
-        return
-      }
-
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('Image size should be less than 10MB')
-        return
-      }
-
       setSelectedFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
@@ -59,7 +48,6 @@ function Dashboard() {
       setResult(null)
       setDetectedImages({ custom: null, default: null })
       setAllDetections([])
-      toast.success('Image selected successfully')
     }
   }
 
@@ -67,16 +55,15 @@ function Dashboard() {
     e.preventDefault();
     
     if (!selectedFile) {
-      toast.error('Please select an image');
+      setError('Please select an image');
       return;
     }
     
     setLoading(true);
+    setError('');
     setResult(null);
     setDetectedImages({ custom: null, default: null });
     setAllDetections([]);
-    
-    const loadingToast = toast.loading('Classifying waste...');
     
     try {
       const response = await apiService.classifyWaste(selectedFile);
@@ -104,13 +91,13 @@ function Dashboard() {
         setAllDetections(response.data.allDetections);
       }
       
-      // Refresh statistics
       fetchStatistics();
       
-      toast.success('Waste classified and saved successfully!', {
-        id: loadingToast,
-        duration: 4000,
-      });
+      setSnackbar({
+        isOpen: true,
+        message: 'Waste classified and saved successfully!',
+        type: 'success'
+      })
       
     } catch (err) {
       console.error('Error classifying waste:', err);
@@ -118,10 +105,7 @@ function Dashboard() {
                           err.response?.data?.error ||
                           err.message || 
                           'Failed to classify waste. Please ensure ML service is running.';
-      toast.error(errorMessage, {
-        id: loadingToast,
-        duration: 5000,
-      });
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -156,6 +140,7 @@ function Dashboard() {
 
           <div className="upload-section">
             <h3>Upload Waste Image</h3>
+            {error && <div className="error-message">{error}</div>}
             <form onSubmit={handleSubmit}>
               <div className="file-input-container">
                 <input
@@ -278,6 +263,13 @@ function Dashboard() {
         </main>
       </div>
       <Footer className={isCollapsed ? 'collapsed' : ''} />
+      
+      <Snackbar
+        isOpen={snackbar.isOpen}
+        message={snackbar.message}
+        type={snackbar.type}
+        onClose={() => setSnackbar({ ...snackbar, isOpen: false })}
+      />
     </div>
   )
 }
