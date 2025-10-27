@@ -19,6 +19,7 @@ function Dashboard() {
   const [captureMode, setCaptureMode] = useState('upload') // 'upload' or 'camera'
   const [isCameraActive, setIsCameraActive] = useState(false)
   const [capturedImage, setCapturedImage] = useState(null)
+  const [cameraError, setCameraError] = useState(null)
   
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -49,112 +50,294 @@ function Dashboard() {
     }
   }
 
-  // Start Camera - IMPROVED
+  // Enhanced Start Camera with better error handling and debugging
   const startCamera = async () => {
     try {
-      // First, check if getUserMedia is supported
+      console.log('🎥 Starting camera...')
+      setCameraError(null)
+      
+      // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        toast.error('Camera not supported in this browser')
+        const errorMsg = 'Camera not supported in this browser. Please use Chrome, Edge, or Firefox.'
+        setCameraError(errorMsg)
+        toast.error(errorMsg, { duration: 5000 })
         return
       }
 
-      // Request camera access
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        } 
+      // IMPORTANT: Wait a bit for React to render the video element
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      if (!videoRef.current) {
+        console.error('❌ Video element ref is null after waiting')
+        setCameraError('Video element not ready. Please try again.')
+        toast.error('Video element not ready. Please try again.', { duration: 3000 })
+        return
+      }
+
+      console.log('✅ Video element exists:', videoRef.current)
+
+      // Stop any existing stream first
+      if (streamRef.current) {
+        console.log('🛑 Stopping existing stream...')
+        streamRef.current.getTracks().forEach(track => {
+          track.stop()
+          console.log('Track stopped:', track.label)
+        })
+        streamRef.current = null
+      }
+
+      // Clear video element
+      videoRef.current.srcObject = null
+
+      console.log('📹 Requesting camera permission...')
+      
+      // Request camera with constraints (similar to reference code)
+      const constraints = {
+        video: {
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          facingMode: 'user' // Front camera
+        },
+        audio: false
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      
+      console.log('✅ Camera stream obtained!')
+      console.log('Stream tracks:', stream.getTracks().map(t => ({
+        kind: t.kind,
+        label: t.label,
+        enabled: t.enabled,
+        muted: t.muted,
+        readyState: t.readyState
+      })))
+
+      // Double-check video element still exists
+      if (!videoRef.current) {
+        console.error('❌ Video element ref became null')
+        stream.getTracks().forEach(track => track.stop())
+        toast.error('Video element disappeared. Please try again.')
+        return
+      }
+
+      // Set stream to video element
+      videoRef.current.srcObject = stream
+      streamRef.current = stream
+      
+      console.log('🎬 Video srcObject set, attempting to play...')
+
+      // Wait for metadata to load
+      await new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Metadata load timeout'))
+        }, 5000)
+
+        if (!videoRef.current) {
+          clearTimeout(timeoutId)
+          reject(new Error('Video element is null'))
+          return
+        }
+
+        videoRef.current.onloadedmetadata = () => {
+          console.log('📊 Metadata loaded:', {
+            videoWidth: videoRef.current.videoWidth,
+            videoHeight: videoRef.current.videoHeight,
+            duration: videoRef.current.duration
+          })
+          clearTimeout(timeoutId)
+          resolve()
+        }
+
+        videoRef.current.onerror = (e) => {
+          console.error('❌ Video element error:', e)
+          clearTimeout(timeoutId)
+          reject(new Error('Video element error'))
+        }
       })
 
-      // Wait for video element to be ready
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        streamRef.current = stream
-        
-        // Wait for video to load metadata
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play()
+      // Force play with retry mechanism
+      let playAttempts = 0
+      const maxAttempts = 3
+
+      const attemptPlay = async () => {
+        try {
+          playAttempts++
+          console.log(`▶️ Play attempt ${playAttempts}/${maxAttempts}...`)
+          
+          if (!videoRef.current) {
+            throw new Error('Video element is null')
+          }
+
+          await videoRef.current.play()
+          
+          console.log('✅ Video playing successfully!')
+          console.log('Video state:', {
+            paused: videoRef.current.paused,
+            ended: videoRef.current.ended,
+            currentTime: videoRef.current.currentTime,
+            readyState: videoRef.current.readyState
+          })
+
           setIsCameraActive(true)
-          toast.success('Camera started successfully')
+          setCameraError(null)
+          toast.success('📹 Camera started successfully!', { duration: 2000 })
+          
+        } catch (playError) {
+          console.error(`❌ Play attempt ${playAttempts} failed:`, playError)
+          
+          if (playAttempts < maxAttempts) {
+            console.log(`🔄 Retrying in 500ms...`)
+            await new Promise(resolve => setTimeout(resolve, 500))
+            return attemptPlay()
+          } else {
+            throw new Error(`Failed to play video after ${maxAttempts} attempts: ${playError.message}`)
+          }
         }
       }
+
+      await attemptPlay()
+
     } catch (error) {
-      console.error('Error accessing camera:', error)
+      console.error('❌ Camera access error:', error)
       
       let errorMessage = 'Failed to access camera.'
+      let errorDetails = error.message
       
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        errorMessage = '❌ Camera permission denied. Please allow camera access in your browser settings.'
+        errorMessage = '🚫 Camera permission denied'
+        errorDetails = 'Please allow camera access:\n1. Click the camera icon in the address bar\n2. Select "Allow"\n3. Refresh the page and try again'
       } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-        errorMessage = '❌ No camera found. Please connect a camera.'
+        errorMessage = '📷 No camera found'
+        errorDetails = 'Please connect a camera device and try again'
       } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-        errorMessage = '❌ Camera is already in use by another application.'
+        errorMessage = '🔒 Camera is already in use'
+        errorDetails = 'Please close other apps using the camera (Zoom, Teams, Skype, etc.) and try again'
       } else if (error.name === 'OverconstrainedError') {
-        errorMessage = '❌ Camera constraints not supported. Trying with default settings...'
+        errorMessage = '⚙️ Camera settings not supported'
+        errorDetails = 'Trying with basic settings...'
         
-        // Try again with simpler constraints
+        // Try with simpler constraints
         try {
-          const simpleStream = await navigator.mediaDevices.getUserMedia({ video: true })
-          if (videoRef.current) {
-            videoRef.current.srcObject = simpleStream
-            streamRef.current = simpleStream
-            videoRef.current.onloadedmetadata = () => {
-              videoRef.current.play()
-              setIsCameraActive(true)
-              toast.success('Camera started with default settings')
-            }
+          console.log('🔄 Retrying with basic constraints...')
+          
+          if (!videoRef.current) {
+            throw new Error('Video element is null during retry')
           }
+
+          const simpleStream = await navigator.mediaDevices.getUserMedia({ video: true })
+          
+          videoRef.current.srcObject = simpleStream
+          streamRef.current = simpleStream
+          
+          await videoRef.current.play()
+          setIsCameraActive(true)
+          toast.success('📹 Camera started with basic settings', { duration: 2000 })
           return
         } catch (retryError) {
-          errorMessage = '❌ Failed to start camera with any settings'
+          console.error('❌ Retry failed:', retryError)
+          errorDetails = 'Your camera does not support the required settings'
         }
+      } else if (error.name === 'SecurityError') {
+        errorMessage = '🔐 Security error'
+        errorDetails = 'Camera access requires HTTPS or localhost. Current URL: ' + window.location.href
+      } else if (error.message.includes('Video element is null')) {
+        errorMessage = '⚠️ Video element not ready'
+        errorDetails = 'The camera view is not ready yet. Please:\n1. Wait a moment\n2. Click "Start Camera" again'
       }
       
-      toast.error(errorMessage)
+      setCameraError(`${errorMessage}\n${errorDetails}`)
+      toast.error(errorMessage, { duration: 6000 })
+      
+      // Show detailed error in console for debugging
+      console.error('Full error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      })
     }
   }
 
-// ...existing code...
   // Stop Camera
   const stopCamera = () => {
+    console.log('🛑 Stopping camera...')
+    
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current.getTracks().forEach(track => {
+        track.stop()
+        console.log('Track stopped:', track.label)
+      })
       streamRef.current = null
-      setIsCameraActive(false)
-      toast.success('Camera stopped')
     }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+    
+    setIsCameraActive(false)
+    setCameraError(null)
+    toast.success('Camera stopped', { duration: 1500 })
   }
 
   // Capture Photo
   const capturePhoto = useCallback(() => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current
-      const canvas = canvasRef.current
-      
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      
-      const context = canvas.getContext('2d')
-      context.drawImage(video, 0, 0, canvas.width, canvas.height)
-      
-      canvas.toBlob((blob) => {
-        const file = new File([blob], 'captured-waste.jpg', { type: 'image/jpeg' })
-        const imageUrl = URL.createObjectURL(blob)
-        
-        setCapturedImage(imageUrl)
-        setSelectedFile(file)
-        setPreview(imageUrl)
-        stopCamera()
-        
-        // Reset results
-        setResult(null)
-        setDetectedImages({ custom: null, default: null })
-        setAllDetections([])
-        
-        toast.success('Photo captured! Click "Classify Waste" to analyze.')
-      }, 'image/jpeg', 0.95)
+    if (!videoRef.current || !canvasRef.current) {
+      toast.error('Camera not ready')
+      return
     }
+
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    
+    // Check if video is actually playing
+    if (video.paused || video.ended || video.readyState < 2) {
+      toast.error('Video not ready. Please wait for camera to fully initialize.')
+      return
+    }
+    
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    
+    console.log('📸 Capturing photo:', {
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height
+    })
+    
+    const context = canvas.getContext('2d')
+    
+    // Mirror the image horizontally (to match the mirrored video display)
+    context.save()
+    context.scale(-1, 1)
+    context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height)
+    context.restore()
+    
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        toast.error('Failed to capture photo')
+        return
+      }
+
+      const file = new File([blob], 'captured-waste.jpg', { type: 'image/jpeg' })
+      const imageUrl = URL.createObjectURL(blob)
+      
+      console.log('✅ Photo captured:', {
+        size: blob.size,
+        type: blob.type
+      })
+      
+      setCapturedImage(imageUrl)
+      setSelectedFile(file)
+      setPreview(imageUrl)
+      stopCamera()
+      
+      // Reset results
+      setResult(null)
+      setDetectedImages({ custom: null, default: null })
+      setAllDetections([])
+      
+      toast.success('📸 Photo captured! Click "Classify Waste" to analyze.', { duration: 3000 })
+    }, 'image/jpeg', 0.95)
   }, [])
 
   // Handle File Upload
@@ -272,6 +455,7 @@ function Dashboard() {
     setDetectedImages({ custom: null, default: null })
     setAllDetections([])
     setActiveModel('custom')
+    setCameraError(null)
     if (isCameraActive) {
       stopCamera()
     }
@@ -386,11 +570,28 @@ function Dashboard() {
               </>
             )}
 
-            {/* Camera Mode */}
+            {/* Camera Mode - ALWAYS RENDER VIDEO ELEMENT */}
             {captureMode === 'camera' && (
               <>
                 <h3>📷 Capture from Camera</h3>
                 
+                {/* Camera Error Display */}
+                {cameraError && (
+                  <div style={{
+                    backgroundColor: '#fee2e2',
+                    border: '1px solid #ef4444',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    marginBottom: '1rem',
+                    whiteSpace: 'pre-line'
+                  }}>
+                    <strong style={{ color: '#dc2626' }}>❌ Camera Error:</strong>
+                    <p style={{ margin: '8px 0 0 0', color: '#991b1b', fontSize: '0.9rem' }}>
+                      {cameraError}
+                    </p>
+                  </div>
+                )}
+
                 <div style={{ 
                   position: 'relative', 
                   width: '100%', 
@@ -403,35 +604,50 @@ function Dashboard() {
                   marginBottom: '1rem',
                   border: '2px solid #4CAF50'
                 }}>
-                  {isCameraActive ? (
-                    <>
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                      <div style={{
-                        position: 'absolute',
-                        top: '10px',
-                        left: '10px',
-                        backgroundColor: 'rgba(76, 175, 80, 0.9)',
-                        color: 'white',
-                        padding: '5px 10px',
-                        borderRadius: '5px',
-                        fontSize: '0.9rem',
-                        fontWeight: 'bold'
-                      }}>
-                        🔴 LIVE
-                      </div>
-                    </>
-                  ) : capturedImage ? (
+                  {/* ALWAYS render video element, just hide it when not active */}
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'cover',
+                      transform: 'scaleX(-1)', // Mirror the video
+                      display: isCameraActive ? 'block' : 'none'
+                    }}
+                  />
+                  
+                  {isCameraActive && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '10px',
+                      left: '10px',
+                      backgroundColor: 'rgba(76, 175, 80, 0.9)',
+                      color: 'white',
+                      padding: '5px 10px',
+                      borderRadius: '5px',
+                      fontSize: '0.9rem',
+                      fontWeight: 'bold'
+                    }}>
+                      🔴 LIVE
+                    </div>
+                  )}
+                  
+                  {capturedImage && (
                     <>
                       <img 
                         src={capturedImage} 
                         alt="Captured waste" 
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        style={{ 
+                          width: '100%', 
+                          height: '100%', 
+                          objectFit: 'contain',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0
+                        }}
                       />
                       <div style={{
                         position: 'absolute',
@@ -447,7 +663,9 @@ function Dashboard() {
                         ✅ CAPTURED
                       </div>
                     </>
-                  ) : (
+                  )}
+                  
+                  {!isCameraActive && !capturedImage && (
                     <div style={{ 
                       display: 'flex', 
                       alignItems: 'center', 
@@ -513,6 +731,7 @@ function Dashboard() {
                           setCapturedImage(null)
                           setSelectedFile(null)
                           setPreview(null)
+                          setCameraError(null)
                           startCamera()
                         }}
                         className="btn"
