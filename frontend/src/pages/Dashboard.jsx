@@ -49,9 +49,16 @@ function Dashboard() {
     }
   }
 
-  // Start Camera
+  // Start Camera - IMPROVED
   const startCamera = async () => {
     try {
+      // First, check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.error('Camera not supported in this browser')
+        return
+      }
+
+      // Request camera access
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment', // Use back camera on mobile
@@ -59,18 +66,56 @@ function Dashboard() {
           height: { ideal: 720 }
         } 
       })
+
+      // Wait for video element to be ready
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         streamRef.current = stream
-        setIsCameraActive(true)
-        toast.success('Camera started successfully')
+        
+        // Wait for video to load metadata
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play()
+          setIsCameraActive(true)
+          toast.success('Camera started successfully')
+        }
       }
     } catch (error) {
       console.error('Error accessing camera:', error)
-      toast.error('Failed to access camera. Please check permissions.')
+      
+      let errorMessage = 'Failed to access camera.'
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorMessage = '❌ Camera permission denied. Please allow camera access in your browser settings.'
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorMessage = '❌ No camera found. Please connect a camera.'
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        errorMessage = '❌ Camera is already in use by another application.'
+      } else if (error.name === 'OverconstrainedError') {
+        errorMessage = '❌ Camera constraints not supported. Trying with default settings...'
+        
+        // Try again with simpler constraints
+        try {
+          const simpleStream = await navigator.mediaDevices.getUserMedia({ video: true })
+          if (videoRef.current) {
+            videoRef.current.srcObject = simpleStream
+            streamRef.current = simpleStream
+            videoRef.current.onloadedmetadata = () => {
+              videoRef.current.play()
+              setIsCameraActive(true)
+              toast.success('Camera started with default settings')
+            }
+          }
+          return
+        } catch (retryError) {
+          errorMessage = '❌ Failed to start camera with any settings'
+        }
+      }
+      
+      toast.error(errorMessage)
     }
   }
 
+// ...existing code...
   // Stop Camera
   const stopCamera = () => {
     if (streamRef.current) {
@@ -94,7 +139,7 @@ function Dashboard() {
       context.drawImage(video, 0, 0, canvas.width, canvas.height)
       
       canvas.toBlob((blob) => {
-        const file = new File([blob], 'captured-image.jpg', { type: 'image/jpeg' })
+        const file = new File([blob], 'captured-waste.jpg', { type: 'image/jpeg' })
         const imageUrl = URL.createObjectURL(blob)
         
         setCapturedImage(imageUrl)
@@ -107,7 +152,7 @@ function Dashboard() {
         setDetectedImages({ custom: null, default: null })
         setAllDetections([])
         
-        toast.success('Photo captured!')
+        toast.success('Photo captured! Click "Classify Waste" to analyze.')
       }, 'image/jpeg', 0.95)
     }
   }, [])
@@ -144,9 +189,9 @@ function Dashboard() {
     }
   }
 
-  // Handle Submit/Classify
+  // Handle Submit/Classify - Works for BOTH upload and camera
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     
     if (!selectedFile) {
       toast.error('Please select or capture an image')
@@ -158,13 +203,17 @@ function Dashboard() {
     setDetectedImages({ custom: null, default: null })
     setAllDetections([])
     
-    const loadingToast = toast.loading('Classifying waste...')
+    const loadingToast = toast.loading('🔍 Analyzing waste with AI models...')
     
     try {
+      // Call the API service (works for both upload and camera)
       const response = await apiService.classifyWaste(selectedFile)
+      
+      console.log('API Response:', response.data)
       
       const classification = response.data.classification || response.data
       
+      // Set classification result
       setResult({
         category: classification.category,
         confidence: classification.confidence,
@@ -174,20 +223,27 @@ function Dashboard() {
         description: classification.description
       })
 
+      // Set detected images from both models
       if (response.data.customModel || response.data.defaultModel) {
         setDetectedImages({
           custom: response.data.customModel?.image || null,
           default: response.data.defaultModel?.image || null
         })
+        
+        console.log('Custom Model Image:', response.data.customModel?.image ? 'Available' : 'Not available')
+        console.log('Default Model Image:', response.data.defaultModel?.image ? 'Available' : 'Not available')
       }
 
-      if (response.data.allDetections) {
+      // Set all detections
+      if (response.data.allDetections && response.data.allDetections.length > 0) {
         setAllDetections(response.data.allDetections)
+        console.log('Total detections:', response.data.allDetections.length)
       }
       
+      // Update statistics
       fetchStatistics()
       
-      toast.success('Waste classified and saved successfully!', {
+      toast.success('✅ Waste classified successfully!', {
         id: loadingToast,
         duration: 4000,
       })
@@ -197,7 +253,7 @@ function Dashboard() {
       const errorMessage = err.response?.data?.detail || 
                           err.response?.data?.error ||
                           err.message || 
-                          'Failed to classify waste. Please ensure ML service is running.'
+                          'Failed to classify waste. Please ensure ML service is running on port 5000.'
       toast.error(errorMessage, {
         id: loadingToast,
         duration: 5000,
@@ -215,15 +271,18 @@ function Dashboard() {
     setResult(null)
     setDetectedImages({ custom: null, default: null })
     setAllDetections([])
+    setActiveModel('custom')
     if (isCameraActive) {
       stopCamera()
     }
+    toast.success('Reset complete')
   }
 
   // Switch capture mode
   const switchMode = (mode) => {
     setCaptureMode(mode)
     handleReset()
+    toast.success(`Switched to ${mode === 'upload' ? 'Upload' : 'Camera'} mode`)
   }
 
   return (
@@ -233,7 +292,10 @@ function Dashboard() {
         <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
         <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
           <div className="dashboard-header">
-            <h2>Waste Classification Dashboard</h2>
+            <h2>🗑️ Waste Classification Dashboard</h2>
+            <p style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+              Upload an image or use your camera to classify waste with AI
+            </p>
           </div>
 
           {statistics && (
@@ -259,12 +321,14 @@ function Dashboard() {
               <button 
                 className={`tab-btn ${captureMode === 'upload' ? 'active' : ''}`}
                 onClick={() => switchMode('upload')}
+                disabled={loading}
               >
                 📁 Upload Image
               </button>
               <button 
                 className={`tab-btn ${captureMode === 'camera' ? 'active' : ''}`}
                 onClick={() => switchMode('camera')}
+                disabled={loading}
               >
                 📷 Use Camera
               </button>
@@ -282,16 +346,17 @@ function Dashboard() {
                       onChange={handleFileChange}
                       id="file-input"
                       className="file-input"
+                      disabled={loading}
                     />
                     <label htmlFor="file-input" className="file-label">
                       Choose Image
                     </label>
-                    {selectedFile && <span className="file-name">{selectedFile.name}</span>}
+                    {selectedFile && <span className="file-name">📄 {selectedFile.name}</span>}
                   </div>
 
-                  {preview && !detectedImages.custom && !detectedImages.default && (
+                  {preview && !result && (
                     <div className="image-preview">
-                      <h4>Original Image</h4>
+                      <h4>📸 Preview</h4>
                       <img src={preview} alt="Preview" />
                     </div>
                   )}
@@ -303,7 +368,7 @@ function Dashboard() {
                       disabled={!selectedFile || loading}
                       style={{ flex: 1 }}
                     >
-                      {loading ? 'Classifying...' : 'Classify Waste'}
+                      {loading ? '🔄 Classifying...' : '🔍 Classify Waste'}
                     </button>
                     {selectedFile && (
                       <button 
@@ -311,8 +376,9 @@ function Dashboard() {
                         onClick={handleReset}
                         className="btn"
                         style={{ flex: 1 }}
+                        disabled={loading}
                       >
-                        Reset
+                        🔄 Reset
                       </button>
                     )}
                   </div>
@@ -323,26 +389,78 @@ function Dashboard() {
             {/* Camera Mode */}
             {captureMode === 'camera' && (
               <>
-                <h3>Capture from Camera</h3>
+                <h3>📷 Capture from Camera</h3>
                 
-                <div style={{ position: 'relative', width: '100%', maxWidth: '640px', margin: '0 auto', aspectRatio: '4/3', backgroundColor: '#000', borderRadius: '8px', overflow: 'hidden', marginBottom: '1rem' }}>
+                <div style={{ 
+                  position: 'relative', 
+                  width: '100%', 
+                  maxWidth: '640px', 
+                  margin: '0 auto', 
+                  aspectRatio: '4/3', 
+                  backgroundColor: '#000', 
+                  borderRadius: '8px', 
+                  overflow: 'hidden', 
+                  marginBottom: '1rem',
+                  border: '2px solid #4CAF50'
+                }}>
                   {isCameraActive ? (
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                    <>
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        left: '10px',
+                        backgroundColor: 'rgba(76, 175, 80, 0.9)',
+                        color: 'white',
+                        padding: '5px 10px',
+                        borderRadius: '5px',
+                        fontSize: '0.9rem',
+                        fontWeight: 'bold'
+                      }}>
+                        🔴 LIVE
+                      </div>
+                    </>
                   ) : capturedImage ? (
-                    <img 
-                      src={capturedImage} 
-                      alt="Captured" 
-                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                    />
+                    <>
+                      <img 
+                        src={capturedImage} 
+                        alt="Captured waste" 
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        left: '10px',
+                        backgroundColor: 'rgba(33, 150, 243, 0.9)',
+                        color: 'white',
+                        padding: '5px 10px',
+                        borderRadius: '5px',
+                        fontSize: '0.9rem',
+                        fontWeight: 'bold'
+                      }}>
+                        ✅ CAPTURED
+                      </div>
+                    </>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff', fontSize: '1.2rem', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      height: '100%', 
+                      color: '#fff', 
+                      fontSize: '1.2rem', 
+                      flexDirection: 'column', 
+                      gap: '1rem' 
+                    }}>
                       <span style={{ fontSize: '3rem' }}>📷</span>
                       <span>Camera Preview</span>
+                      <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>Click "Start Camera" to begin</span>
                     </div>
                   )}
                 </div>
@@ -355,8 +473,9 @@ function Dashboard() {
                       onClick={startCamera}
                       className="btn btn-primary"
                       style={{ flex: 1 }}
+                      disabled={loading}
                     >
-                      Start Camera
+                      📹 Start Camera
                     </button>
                   )}
                   
@@ -365,7 +484,7 @@ function Dashboard() {
                       <button 
                         onClick={capturePhoto}
                         className="btn btn-primary"
-                        style={{ flex: 1 }}
+                        style={{ flex: 1, fontSize: '1.1rem' }}
                       >
                         📸 Capture Photo
                       </button>
@@ -374,12 +493,12 @@ function Dashboard() {
                         className="btn"
                         style={{ flex: 1, backgroundColor: '#f44336', color: 'white' }}
                       >
-                        Stop Camera
+                        ⏹️ Stop Camera
                       </button>
                     </>
                   )}
                   
-                  {capturedImage && (
+                  {capturedImage && !result && (
                     <>
                       <button 
                         onClick={handleSubmit}
@@ -387,26 +506,45 @@ function Dashboard() {
                         disabled={loading}
                         style={{ flex: 1 }}
                       >
-                        {loading ? 'Classifying...' : 'Classify Waste'}
+                        {loading ? '🔄 Classifying...' : '🔍 Classify Waste'}
                       </button>
                       <button 
-                        onClick={handleReset}
+                        onClick={() => {
+                          setCapturedImage(null)
+                          setSelectedFile(null)
+                          setPreview(null)
+                          startCamera()
+                        }}
                         className="btn"
                         style={{ flex: 1 }}
+                        disabled={loading}
                       >
-                        Retake
+                        🔄 Retake Photo
                       </button>
                     </>
+                  )}
+
+                  {result && (
+                    <button 
+                      onClick={handleReset}
+                      className="btn"
+                      style={{ flex: 1, backgroundColor: '#4CAF50', color: 'white' }}
+                    >
+                      ✨ New Classification
+                    </button>
                   )}
                 </div>
               </>
             )}
           </div>
 
-          {/* Detection Results */}
+          {/* Detection Results with Bounding Boxes */}
           {(detectedImages.custom || detectedImages.default) && (
             <div className="detected-images-section">
-              <h3>Detection Results</h3>
+              <h3>🎯 AI Detection Results</h3>
+              <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                Compare results from both AI models
+              </p>
               
               <div className="model-tabs">
                 <button 
@@ -414,31 +552,43 @@ function Dashboard() {
                   onClick={() => setActiveModel('custom')}
                   disabled={!detectedImages.custom}
                 >
-                  Custom Model (trained-v2.pt)
+                  🤖 Custom Model
+                  {detectedImages.custom && <span style={{ marginLeft: '5px', fontSize: '0.8rem' }}>✅</span>}
                 </button>
                 <button 
                   className={`tab-btn ${activeModel === 'default' ? 'active' : ''}`}
                   onClick={() => setActiveModel('default')}
                   disabled={!detectedImages.default}
                 >
-                  Default Model (yolov5s.pt)
+                  🔍 YOLOv5 Model
+                  {detectedImages.default && <span style={{ marginLeft: '5px', fontSize: '0.8rem' }}>✅</span>}
                 </button>
               </div>
 
               <div className="detected-image-container">
                 {activeModel === 'custom' && detectedImages.custom && (
-                  <img 
-                    src={detectedImages.custom} 
-                    alt="Detected waste with bounding boxes (Custom Model)" 
-                    className="detected-image"
-                  />
+                  <div>
+                    <h4 style={{ textAlign: 'center', color: '#4CAF50', marginBottom: '1rem' }}>
+                      Custom Trained Model Results
+                    </h4>
+                    <img 
+                      src={detectedImages.custom} 
+                      alt="Detected waste with bounding boxes (Custom Model)" 
+                      className="detected-image"
+                    />
+                  </div>
                 )}
                 {activeModel === 'default' && detectedImages.default && (
-                  <img 
-                    src={detectedImages.default} 
-                    alt="Detected waste with bounding boxes (Default Model)" 
-                    className="detected-image"
-                  />
+                  <div>
+                    <h4 style={{ textAlign: 'center', color: '#2196F3', marginBottom: '1rem' }}>
+                      YOLOv5 Default Model Results
+                    </h4>
+                    <img 
+                      src={detectedImages.default} 
+                      alt="Detected waste with bounding boxes (Default Model)" 
+                      className="detected-image"
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -447,12 +597,12 @@ function Dashboard() {
           {/* All Detections */}
           {allDetections.length > 0 && (
             <div className="all-detections-section">
-              <h3>All Detected Items</h3>
+              <h3>📋 All Detected Items ({allDetections.length})</h3>
               <div className="detections-grid">
                 {allDetections.map((detection, index) => (
                   <div key={index} className="detection-card">
                     <div className="detection-header">
-                      <span className="detection-item">{detection.item}</span>
+                      <span className="detection-item">🔹 {detection.item}</span>
                       <span className={`detection-type ${detection.type?.toLowerCase()}`}>
                         {detection.type}
                       </span>
@@ -472,23 +622,23 @@ function Dashboard() {
             </div>
           )}
 
-          {/* Classification Result */}
+          {/* Primary Classification Result */}
           {result && (
             <div className="result-section">
-              <h3>Primary Classification Result</h3>
+              <h3>✅ Primary Classification Result</h3>
               <div className="result-card">
-                <p><strong>Waste Type:</strong> {result.wasteType}</p>
-                <p><strong>Category:</strong> <span className={`category-badge ${result.category?.toLowerCase()}`}>{result.category}</span></p>
-                <p><strong>Confidence:</strong> {result.confidence}%</p>
-                <p><strong>Recyclable:</strong> <span className={result.recyclable ? 'recyclable-yes' : 'recyclable-no'}>{result.recyclable ? 'Yes' : 'No'}</span></p>
+                <p><strong>🗑️ Waste Type:</strong> {result.wasteType}</p>
+                <p><strong>📦 Category:</strong> <span className={`category-badge ${result.category?.toLowerCase()}`}>{result.category}</span></p>
+                <p><strong>🎯 Confidence:</strong> <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{result.confidence}%</span></p>
+                <p><strong>♻️ Recyclable:</strong> <span className={result.recyclable ? 'recyclable-yes' : 'recyclable-no'}>{result.recyclable ? 'Yes ✅' : 'No ❌'}</span></p>
                 {result.disposal_instructions && (
                   <div className="disposal-instructions">
-                    <strong>Disposal Instructions:</strong>
+                    <strong>📌 Disposal Instructions:</strong>
                     <p>{result.disposal_instructions}</p>
                   </div>
                 )}
                 {result.description && (
-                  <p className="description"><strong>Description:</strong> {result.description}</p>
+                  <p className="description"><strong>ℹ️ Description:</strong> {result.description}</p>
                 )}
               </div>
             </div>
