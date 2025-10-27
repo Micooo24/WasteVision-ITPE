@@ -51,4 +51,8 @@ ml_service/temporary_storage/
 
 
 frontend/node_modules/
+backend/node_modules/
 
+
+ml_service/models/trained-v3.h5
+ml_service/models/trained-v3.pt
