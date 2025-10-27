@@ -15,7 +15,7 @@ function Dashboard() {
   const [statistics, setStatistics] = useState(null)
   const [detectedImages, setDetectedImages] = useState({ custom: null, default: null })
   const [allDetections, setAllDetections] = useState([])
-  const [activeModel, setActiveModel] = useState('custom') // 'custom' or 'default'
+  const [activeModel, setActiveModel] = useState('custom')
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
@@ -56,7 +56,6 @@ function Dashboard() {
         setPreview(reader.result)
       }
       reader.readAsDataURL(file)
-      // Reset results when new file is selected
       setResult(null)
       setDetectedImages({ custom: null, default: null })
       setAllDetections([])
@@ -80,21 +79,20 @@ function Dashboard() {
     const loadingToast = toast.loading('Classifying waste...');
     
     try {
-      // Classify using ML service and save to backend
       const response = await apiService.classifyWaste(selectedFile);
       
-      // Set result from response
       const classification = response.data.classification || response.data;
+      
+      // confidence is already in percentage (0-100) from API service
       setResult({
         category: classification.category,
-        confidence: classification.confidence,
+        confidence: classification.confidence, // Already percentage
         recyclable: classification.recyclable,
         disposal_instructions: classification.disposalMethod,
         wasteType: classification.wasteType,
         description: classification.description
       });
 
-      // Set detected images with bounding boxes
       if (response.data.customModel || response.data.defaultModel) {
         setDetectedImages({
           custom: response.data.customModel?.image || null,
@@ -102,7 +100,6 @@ function Dashboard() {
         });
       }
 
-      // Set all detections
       if (response.data.allDetections) {
         setAllDetections(response.data.allDetections);
       }

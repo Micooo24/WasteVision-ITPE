@@ -2,7 +2,6 @@ import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const ML_SERVICE_URL = import.meta.env.VITE_ML_URL || 'http://localhost:5000'
-const MOCK_MODE = false;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -38,9 +37,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Clear all auth data
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      
+      // Force reload to login page
       window.location.href = '/login'
+      
+      // Optionally show alert
+      if (!window.location.pathname.includes('/login')) {
+        alert('Your session has expired. Please login again.')
+      }
     }
     return Promise.reject(error)
   }
@@ -60,50 +67,7 @@ function getDisposalMethod(wasteType) {
 }
 
 // API methods
-export const apiService = MOCK_MODE ? {
-  login: (credentials) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        if (credentials.email === 'test@test.com' && credentials.password === 'password') {
-          resolve({
-            data: {
-              token: 'mock-token-123',
-              user: { name: 'Test User', email: credentials.email }
-            }
-          });
-        } else {
-          throw new Error('Invalid credentials');
-        }
-      }, 500);
-    });
-  },
-  register: (userData) => {
-    return Promise.resolve({ data: { message: 'User registered' } });
-  },
-  classifyWaste: (imageFile) => {
-    return Promise.resolve({
-      data: {
-        wasteType: 'Plastic Bottle',
-        category: 'Recyclable',
-        confidence: 95,
-        recyclable: true,
-        disposalMethod: 'Place in blue recycling bin',
-        description: 'PET plastic bottle - can be recycled'
-      }
-    });
-  },
-  getHistory: () => Promise.resolve({ data: { records: [] } }),
-  getProfile: () => Promise.resolve({ data: { user: {} } }),
-  updateProfile: () => Promise.resolve({ data: { user: {} } }),
-  getTips: () => Promise.resolve({ data: [] }),
-  getStatistics: () => Promise.resolve({
-    data: {
-      totalClassifications: 0,
-      recyclable: 0,
-      nonRecyclable: 0
-    }
-  })
-} : {
+export const apiService = {
   // Auth
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
@@ -118,26 +82,7 @@ export const apiService = MOCK_MODE ? {
   // ML Service - Health Check
   checkMLHealth: () => mlApi.get('/health'),
   
-  // Backend - Save waste classification record
-  saveWasteRecord: async (imageFile, classificationData) => {
-    const formData = new FormData();
-    formData.append('image', imageFile);
-    
-    if (classificationData) {
-      if (classificationData.wasteType) formData.append('wasteType', classificationData.wasteType);
-      if (classificationData.category) formData.append('category', classificationData.category);
-      if (classificationData.confidence !== undefined) formData.append('confidence', classificationData.confidence);
-      if (classificationData.recyclable !== undefined) formData.append('recyclable', classificationData.recyclable);
-      if (classificationData.disposalMethod) formData.append('disposalMethod', classificationData.disposalMethod);
-      if (classificationData.description) formData.append('description', classificationData.description);
-    }
-    
-    return api.post('/user/save-record', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-  },
-  
-  // Combined - Classify and Save
+  // Combined - Classify and Save with detected image
   classifyWaste: async (imageFile) => {
     try {
       // Step 1: Classify using ML service
@@ -166,33 +111,44 @@ export const apiService = MOCK_MODE ? {
       const classificationData = {
         wasteType: detection.item || 'Unknown',
         category: detection.type || 'Unknown',
-        confidence: Math.round((detection.confidence || 0) * 100),
+        confidence: detection.confidence || 0, // Keep as decimal (0-1)
         recyclable: detection.type?.toLowerCase() === 'recyclable',
         disposalMethod: getDisposalMethod(detection.type),
         description: `Detected as ${detection.item || 'unknown item'}`
       };
       
-      // Step 2: Save to backend
+      // Get the detected image (prefer custom model)
+      const detectedImageBase64 = customModel?.image || defaultModel?.image || null;
+      
+      // Step 2: Save to backend with detected image
       const saveFormData = new FormData();
       saveFormData.append('image', imageFile);
       saveFormData.append('wasteType', classificationData.wasteType);
       saveFormData.append('category', classificationData.category);
-      saveFormData.append('confidence', classificationData.confidence);
-      saveFormData.append('recyclable', classificationData.recyclable);
+      saveFormData.append('confidence', classificationData.confidence); // Send as decimal
+      saveFormData.append('recyclable', classificationData.recyclable); // Send as boolean
       saveFormData.append('disposalMethod', classificationData.disposalMethod);
       saveFormData.append('description', classificationData.description);
+      
+      // Add detected image if available
+      if (detectedImageBase64) {
+        saveFormData.append('detectedImageBase64', detectedImageBase64);
+      }
       
       const saveResponse = await api.post('/user/save-record', saveFormData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      // Return combined response with bounding box image
+      // Return combined response with bounding box images
       return {
         data: {
           ...saveResponse.data,
-          classification: classificationData,
-          detectedImage: modelData?.image, // Base64 image with bounding boxes
-          allDetections: detections, // All detected items
+          classification: {
+            ...classificationData,
+            confidence: Math.round(classificationData.confidence * 100) // Convert to percentage for display
+          },
+          detectedImage: modelData?.image,
+          allDetections: detections,
           customModel: customModel,
           defaultModel: defaultModel
         }
@@ -206,7 +162,7 @@ export const apiService = MOCK_MODE ? {
   // History
   getHistory: () => api.get('/user/user-records'),
   
-  // Get specific record
+  // Get specific record by ID
   getRecordById: (id) => api.get(`/user/user-records/${id}`),
   
   // User Profile

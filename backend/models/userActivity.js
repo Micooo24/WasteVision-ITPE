@@ -1,41 +1,62 @@
 const mongoose = require("mongoose");
 
-const UserSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required:true
-  },
-  items: [
-    {
-      item: {
-        type: String,
-        required: true,
-      },
-      type: {
-        type: String,
-        required: true,
-      },
-      confidence: {
-        type: Number,
-        required: true,
-      },
-    },
-  ],
-  image: {
-    public_id: {
-      type: String,
+const userActivitySchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
-    url:{
-        type:String,
-        required:true
+    items: [
+      {
+        item: {
+          type: String,
+          required: true,
+        },
+        type: {
+          type: String,
+          required: true,
+        },
+        confidence: {
+          type: Number,
+          required: true,
+        },
+        recyclable: {
+          type: Boolean,
+          default: false,
+        },
+        disposalMethod: {
+          type: String,
+        },
+        description: {
+          type: String,
+        },
+      },
+    ],
+    image: {
+      public_id: {
+        type: String,
+        required: true,
+      },
+      url: {
+        type: String,
+        required: true,
+      },
+    },
+    detectedImage: {
+      public_id: {
+        type: String,
+      },
+      url: {
+        type: String,
+      },
+    },
+    isSave: {
+      type: Boolean,
+      default: false,
     },
   },
-  isSave:{
-    type:Boolean,
-    default:false
-  }
-},{timestamps:true});
+  { timestamps: true }
+);
 
-module.exports = mongoose.model("UserActivity", UserSchema)
+module.exports = mongoose.model("UserActivity", userActivitySchema);
