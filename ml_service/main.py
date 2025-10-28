@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import torch
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 import io
 import base64
 import logging
@@ -73,10 +73,17 @@ except Exception as e:
     logger.error(f"Failed to load default model: {str(e)}")
     raise
 
-# Detection configuration
-CONF_THRESHOLD = 0.15
-IOU_THRESHOLD = 0.15
-MAX_DETECTIONS = 1000
+# Detection configuration - OPTIMIZED FOR CAMERA CAPTURES
+CONF_THRESHOLD = 0.30  # Increased to reduce false positives
+IOU_THRESHOLD = 0.45   # Increased to reduce overlapping boxes
+MAX_DETECTIONS = 100   # Reasonable limit for performance
+
+# Image preprocessing configuration
+ENABLE_PREPROCESSING = True  # Set to False to disable preprocessing
+MAX_IMAGE_SIZE = 1280  # Maximum dimension for image processing
+CONTRAST_FACTOR = 1.2  # Increase contrast (1.0 = no change)
+SHARPNESS_FACTOR = 1.3  # Increase sharpness (1.0 = no change)
+BRIGHTNESS_FACTOR = 1.1  # Increase brightness (1.0 = no change)
 
 # Bounding box configuration
 LINE_THICKNESS = 5
@@ -184,6 +191,45 @@ WASTE_CLASSES = {
 }
 
 
+def preprocess_camera_image(image):
+    """
+    Enhance image quality for better detection accuracy.
+    This helps with camera captures that may have poor lighting or blur.
+    """
+    try:
+        logger.info("Starting image preprocessing...")
+        
+        # Resize if image is too large
+        if max(image.size) > MAX_IMAGE_SIZE:
+            ratio = MAX_IMAGE_SIZE / max(image.size)
+            new_size = tuple(int(dim * ratio) for dim in image.size)
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+            logger.info(f"Image resized to: {image.size}")
+        
+        # Increase contrast for better object distinction
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(CONTRAST_FACTOR)
+        logger.info(f"Contrast enhanced by factor {CONTRAST_FACTOR}")
+        
+        # Increase sharpness to reduce blur
+        enhancer = ImageEnhance.Sharpness(image)
+        image = enhancer.enhance(SHARPNESS_FACTOR)
+        logger.info(f"Sharpness enhanced by factor {SHARPNESS_FACTOR}")
+        
+        # Adjust brightness if needed
+        enhancer = ImageEnhance.Brightness(image)
+        image = enhancer.enhance(BRIGHTNESS_FACTOR)
+        logger.info(f"Brightness enhanced by factor {BRIGHTNESS_FACTOR}")
+        
+        logger.info("✓ Image preprocessing completed successfully")
+        return image
+        
+    except Exception as e:
+        logger.error(f"Error during preprocessing: {str(e)}")
+        logger.warning("Returning original image without preprocessing")
+        return image
+
+
 @app.get("/")
 async def root():
     return {
@@ -194,7 +240,32 @@ async def root():
         "custom_model_type": "Image Classification (entire image)" if model_custom else None,
         "default_model_loaded": True,
         "default_model_type": "YOLOv5 Object Detection (with bounding boxes)",
-        "classes": list(CUSTOM_WASTE_CLASSES.values())
+        "classes": list(CUSTOM_WASTE_CLASSES.values()),
+        "detection_config": {
+            "confidence_threshold": CONF_THRESHOLD,
+            "iou_threshold": IOU_THRESHOLD,
+            "max_detections": MAX_DETECTIONS,
+            "preprocessing_enabled": ENABLE_PREPROCESSING
+        }
+    }
+
+
+@app.get("/config")
+async def get_config():
+    """Get current detection configuration"""
+    return {
+        "detection": {
+            "confidence_threshold": CONF_THRESHOLD,
+            "iou_threshold": IOU_THRESHOLD,
+            "max_detections": MAX_DETECTIONS
+        },
+        "preprocessing": {
+            "enabled": ENABLE_PREPROCESSING,
+            "max_image_size": MAX_IMAGE_SIZE,
+            "contrast_factor": CONTRAST_FACTOR,
+            "sharpness_factor": SHARPNESS_FACTOR,
+            "brightness_factor": BRIGHTNESS_FACTOR
+        }
     }
 
 
@@ -224,7 +295,6 @@ def classify_with_tensorflow(image, model):
         result = model(img_array)
         
         # Extract predictions from the result dictionary
-        # The key might be different, check with: print(result.keys())
         if isinstance(result, dict):
             # Try common output keys
             if 'output_0' in result:
@@ -287,7 +357,13 @@ async def identify(file: UploadFile = File(...)):
         logger.info(f"Image saved to: {saved_filepath}")
         
         image = Image.open(io.BytesIO(image_bytes))
-        logger.info(f"Image dimensions: {image.size}")
+        logger.info(f"Original image dimensions: {image.size}")
+        
+        # Apply preprocessing for better detection accuracy
+        if ENABLE_PREPROCESSING:
+            image = preprocess_camera_image(image)
+        else:
+            logger.info("Preprocessing disabled, using original image")
 
         response_data = {}
 
@@ -411,6 +487,7 @@ async def identify(file: UploadFile = File(...)):
             "image": f"data:image/png;base64,{img_default_str}"
         }
         response_data["saved_file"] = saved_filename
+        response_data["preprocessing_applied"] = ENABLE_PREPROCESSING
 
         logger.info("Request completed successfully")
         return JSONResponse(content=response_data)

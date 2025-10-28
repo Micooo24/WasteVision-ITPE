@@ -328,6 +328,8 @@ const startCamera = async () => {
     }
   }, [isDragging, isResizing, handleMouseMove, handleMouseUp])
 
+ 
+
   // Crop and finalize
   const applyCrop = useCallback(() => {
     if (!capturedSnapshot || !cropCanvasRef.current) {
@@ -343,42 +345,90 @@ const startCamera = async () => {
       const cropWidth = (cropBox.width / 100) * img.width
       const cropHeight = (cropBox.height / 100) * img.height
       
-      canvas.width = 640
-      canvas.height = 640
+      // Calculate optimal output size (maintain aspect ratio, min 640px)
+      const aspectRatio = cropWidth / cropHeight
+      let outputWidth, outputHeight
+      
+      if (aspectRatio > 1) {
+        // Wider than tall
+        outputWidth = Math.max(640, cropWidth)
+        outputHeight = outputWidth / aspectRatio
+      } else {
+        // Taller than wide
+        outputHeight = Math.max(640, cropHeight)
+        outputWidth = outputHeight * aspectRatio
+      }
+      
+      // Ensure minimum size for ML model
+      outputWidth = Math.max(640, outputWidth)
+      outputHeight = Math.max(640, outputHeight)
+      
+      canvas.width = outputWidth
+      canvas.height = outputHeight
       
       const context = canvas.getContext('2d')
+      
+      // Use white background
+      context.fillStyle = '#FFFFFF'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Enable image smoothing for better quality
+      context.imageSmoothingEnabled = true
+      context.imageSmoothingQuality = 'high'
+      
+      // Draw the cropped portion with proper scaling
       context.drawImage(
         img,
         cropX, cropY, cropWidth, cropHeight,
         0, 0, canvas.width, canvas.height
       )
       
+      // Convert to blob with maximum quality
       canvas.toBlob((blob) => {
         if (!blob) {
           toast.error('Failed to crop image')
           return
         }
 
-        const file = new File([blob], 'cropped-waste.jpg', { type: 'image/jpeg' })
-        const imageUrl = URL.createObjectURL(blob)
-        
-        console.log('✅ Image cropped:', {
-          fileSize: `${(blob.size / 1024).toFixed(2)} KB`,
-          dimensions: `640x640`,
-          cropArea: `${cropBox.width.toFixed(1)}% x ${cropBox.height.toFixed(1)}%`
+        // Create File object
+        const timestamp = new Date().getTime()
+        const file = new File([blob], `waste-capture-cropped-${timestamp}.jpg`, { 
+          type: 'image/jpeg',
+          lastModified: timestamp
         })
         
+        // Create URL for preview
+        const imageUrl = URL.createObjectURL(blob)
+        
+        console.log('✅ Image cropped and optimized for ML:', {
+          fileName: file.name,
+          fileSize: `${(blob.size / 1024).toFixed(2)} KB`,
+          dimensions: `${canvas.width}x${canvas.height}`,
+          cropArea: `${cropBox.width.toFixed(1)}% x ${cropBox.height.toFixed(1)}%`,
+          aspectRatio: aspectRatio.toFixed(2),
+          quality: 'high (0.98)'
+        })
+        
+        // Clean up
         stopCamera()
         setCapturedSnapshot(null)
         setIsCropping(false)
+        
+        // Pass to parent component
         onCapture(file, imageUrl)
         
-        toast.success('✂️ Image cropped successfully!', { duration: 2000 })
-      }, 'image/jpeg', 0.92)
+        toast.success('✂️ Image cropped and optimized for detection!', { duration: 3000 })
+      }, 'image/jpeg', 0.98) // Maximum quality for ML processing
+    }
+    
+    img.onerror = () => {
+      toast.error('Failed to load snapshot for cropping')
+      console.error('Image load error')
     }
     
     img.src = capturedSnapshot
-  }, [capturedSnapshot, cropBox, onCapture])
+  }, [capturedSnapshot, cropBox, onCapture, stopCamera])
+
 
   const cancelCrop = () => {
     setCapturedSnapshot(null)

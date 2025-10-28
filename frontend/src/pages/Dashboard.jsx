@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
@@ -15,22 +15,46 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
   const [detectedImages, setDetectedImages] = useState({ custom: null, default: null })
   const [allDetections, setAllDetections] = useState([])
   const [activeModel, setActiveModel] = useState('custom')
-  const [captureMode, setCaptureMode] = useState('upload') // 'upload' or 'camera'
+  const [captureMode, setCaptureMode] = useState('upload')
   const [capturedImage, setCapturedImage] = useState(null)
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
   }
 
-  // Handle Camera Capture
+  // Handle Camera Capture - IMPROVED WITH VALIDATION
   const handleCameraCapture = (file, imageUrl) => {
+    console.log('📸 Camera capture received:', {
+      fileName: file.name,
+      fileSize: `${(file.size / 1024).toFixed(2)} KB`,
+      fileType: file.type,
+      imageUrl: imageUrl ? 'URL created' : 'No URL'
+    })
+    
+    // Validate file size
+    if (file.size < 10 * 1024) {
+      toast.error('⚠️ Cropped image is too small. Please capture a larger area.')
+      return
+    }
+    
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('⚠️ Image is too large. Please try cropping a smaller area.')
+      return
+    }
+    
+    // Set the captured image data
     setCapturedImage(imageUrl)
     setSelectedFile(file)
     setPreview(imageUrl)
     
+    // Clear previous results
     setResult(null)
     setDetectedImages({ custom: null, default: null })
     setAllDetections([])
+    
+    toast.success('📸 Image ready! Click "Classify Waste" to analyze.', { 
+      duration: 3000 
+    })
   }
 
   // Handle File Upload
@@ -62,14 +86,34 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
     }
   }
 
-  // Handle Submit/Classify
+  // Handle Submit/Classify - UNIFIED FOR ALL MODES
   const handleSubmit = async (e) => {
     if (e) e.preventDefault()
     
     if (!selectedFile) {
-      toast.error('Please select or capture an image')
+      toast.error('Please select or capture an image first')
       return
     }
+    
+    // Validate file
+    if (!selectedFile.type.startsWith('image/')) {
+      toast.error('Invalid file type. Please use an image file.')
+      return
+    }
+    
+    // Additional validation for small images
+    if (selectedFile.size < 10 * 1024) {
+      toast.error('⚠️ Image is too small for accurate detection. Please recapture with a larger area.')
+      return
+    }
+    
+    console.log('🚀 Starting classification:', {
+      fileName: selectedFile.name,
+      fileSize: `${(selectedFile.size / 1024).toFixed(2)} KB`,
+      fileType: selectedFile.type,
+      captureMode: captureMode,
+      isCropped: selectedFile.name.includes('cropped')
+    })
     
     setLoading(true)
     setResult(null)
@@ -80,6 +124,9 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
     
     try {
       const response = await apiService.classifyWaste(selectedFile)
+      
+      console.log('✅ Classification response:', response.data)
+
       const classification = response.data.classification || response.data
       
       setResult({
@@ -91,15 +138,34 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
         description: classification.description
       })
 
-      if (response.data.customModel || response.data.defaultModel) {
+      // Handle model images
+      if (response.data.custom_model || response.data.default_model || 
+          response.data.customModel || response.data.defaultModel) {
+        const customImg = response.data.custom_model?.image || response.data.customModel?.image
+        const defaultImg = response.data.default_model?.image || response.data.defaultModel?.image
+        
         setDetectedImages({
-          custom: response.data.customModel?.image || null,
-          default: response.data.defaultModel?.image || null
+          custom: customImg || null,
+          default: defaultImg || null
+        })
+        
+        console.log('🎯 Detection images received:', {
+          customModel: customImg ? 'Available' : 'Not available',
+          defaultModel: defaultImg ? 'Available' : 'Not available'
         })
       }
 
-      if (response.data.allDetections && response.data.allDetections.length > 0) {
-        setAllDetections(response.data.allDetections)
+      // Handle all detections
+      const allDets = response.data.all_detections || response.data.allDetections || []
+      if (allDets.length > 0) {
+        setAllDetections(allDets)
+        console.log(`📋 Found ${allDets.length} detections`)
+      } else if (captureMode === 'camera' && selectedFile.name.includes('cropped')) {
+        // If no detections from cropped image, show helpful message
+        toast('💡 Tip: Try capturing a wider area or better lighting', {
+          duration: 5000,
+          icon: '💡'
+        })
       }
       
       toast.success('✅ Waste classified successfully!', {
@@ -108,7 +174,7 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
       })
       
     } catch (err) {
-      console.error('Error classifying waste:', err)
+      console.error('❌ Classification error:', err)
       const errorMessage = err.response?.data?.detail || 
                           err.response?.data?.error ||
                           err.message || 
@@ -117,13 +183,31 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
         id: loadingToast,
         duration: 5000,
       })
+      
+      // Additional guidance for cropped images
+      if (captureMode === 'camera' && selectedFile.name.includes('cropped')) {
+        setTimeout(() => {
+          toast('💡 Try recapturing with better lighting or larger crop area', {
+            duration: 5000,
+            icon: '💡'
+          })
+        }, 1000)
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  // Reset
+  // Reset - IMPROVED with cleanup
   const handleReset = () => {
+    // Clean up object URLs to prevent memory leaks
+    if (capturedImage && capturedImage.startsWith('blob:')) {
+      URL.revokeObjectURL(capturedImage)
+    }
+    if (preview && preview.startsWith('blob:')) {
+      URL.revokeObjectURL(preview)
+    }
+    
     setSelectedFile(null)
     setPreview(null)
     setCapturedImage(null)
@@ -140,6 +224,18 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
     handleReset()
     toast.success(`Switched to ${mode === 'upload' ? 'Upload' : 'Camera'} mode`)
   }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (capturedImage && capturedImage.startsWith('blob:')) {
+        URL.revokeObjectURL(capturedImage)
+      }
+      if (preview && preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview)
+      }
+    }
+  }, [capturedImage, preview])
 
   return (
     <div className="app-container">
@@ -254,6 +350,9 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
                       </button>
                       <button 
                         onClick={() => {
+                          if (capturedImage && capturedImage.startsWith('blob:')) {
+                            URL.revokeObjectURL(capturedImage)
+                          }
                           setCapturedImage(null)
                           setSelectedFile(null)
                           setPreview(null)
