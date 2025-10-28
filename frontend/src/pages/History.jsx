@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar'
 import { apiService } from '../services/api'
 import toast from 'react-hot-toast'
 import '../assets/css/dashboard.css'
+import { exportHistoryToPDF } from '../services/pdfExport';
 
 function History({ isAuthenticated, setIsAuthenticated }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -15,6 +16,7 @@ function History({ isAuthenticated, setIsAuthenticated }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [recordToDelete, setRecordToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
@@ -103,6 +105,40 @@ function History({ isAuthenticated, setIsAuthenticated }) {
     })
   }
 
+  const handleExportPDF = async () => {
+    if (history.length === 0) {
+      toast.error('No classification history to export');
+      return;
+    }
+
+    setExportingPDF(true);
+    const loadingToast = toast.loading('🔄 Generating PDF report...');
+
+    try {
+      // Get user info from localStorage or API
+      const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      const result = await exportHistoryToPDF(history, userInfo);
+      
+      if (result.success) {
+        toast.success(`📄 PDF exported successfully: ${result.fileName}`, {
+          id: loadingToast,
+          duration: 4000
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast.error('Failed to export PDF. Please try again.', {
+        id: loadingToast,
+        duration: 5000
+      });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   return (
     <div className="app-container">
       <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated}/>
@@ -112,6 +148,39 @@ function History({ isAuthenticated, setIsAuthenticated }) {
         <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
           <div className="dashboard-header">
             <h2>Classification History</h2>
+            {history.length > 0 && (
+              <button 
+                className="btn-export-pdf"
+                onClick={handleExportPDF}
+                disabled={exportingPDF}
+                style={{
+                  backgroundColor: '#e74c3c',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '5px',
+                  cursor: exportingPDF ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginLeft: 'auto'
+                }}
+              >
+                {exportingPDF ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-file-pdf"></i>
+                    Export to PDF
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {loading && (
