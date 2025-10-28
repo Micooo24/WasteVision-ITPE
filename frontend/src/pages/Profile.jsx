@@ -5,6 +5,7 @@ import Snackbar from '../components/Snackbar'
 import { apiService } from '../services/api'
 import { getUser, saveUser } from '../services/auth'
 import '../assets/css/dashboard.css'
+import defaultAvatar from '../assets/img/OIP.jpg'
 
 function Profile({ isAuthenticated, setIsAuthenticated }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -155,7 +156,7 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
     }
   }
 
-  const displayAvatar = avatarPreview || formData.avatar
+  const displayAvatar = avatarPreview || formData.avatar || defaultAvatar
 
   return (
     <div className="app-container">
@@ -174,37 +175,22 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
               {/* Avatar Display Section */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
                 <div style={{ position: 'relative', width: '150px', height: '150px', marginBottom: '1rem' }}>
-                  {displayAvatar ? (
-                    <img 
-                      src={displayAvatar} 
-                      alt="Profile Avatar" 
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        border: '4px solid #4caf50',
-                        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
-                      }}
-                    />
-                  ) : (
-                    <div style={{
+                  <img 
+                    src={displayAvatar} 
+                    alt="Profile Avatar" 
+                    style={{
                       width: '100%',
                       height: '100%',
                       borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #4caf50, #45a049)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '3rem',
-                      fontWeight: 'bold',
-                      color: 'white',
+                      objectFit: 'cover',
                       border: '4px solid #4caf50',
                       boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
-                    }}>
-                      {formData.name ? formData.name.charAt(0).toUpperCase() : 'U'}
-                    </div>
-                  )}
+                    }}
+                    onError={(e) => {
+                      // Fallback to default avatar if image fails to load
+                      e.target.src = defaultAvatar;
+                    }}
+                  />
                 </div>
                 
                 <label htmlFor="avatar-upload" style={{
