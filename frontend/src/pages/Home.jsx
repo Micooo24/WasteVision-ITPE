@@ -5,6 +5,11 @@ import Footer from '../components/Footer';
 import '../assets/css/home.css';
 import hero from '../assets/img/group-multi-colored-trash-cans-are-sidewalk_921860-178361.jpg';
 import about from '../assets/img/robotic-waste-optimization-ai-powered-circular-economy-analytics-efficient-sustainability_1223049-701.jpg';
+import img1 from '../assets/img/img1.jpg'
+import img2 from '../assets/img/img2.jpg'
+import img3 from '../assets/img/img3.jpg'
+import img4 from '../assets/img/img4.jpg'
+import alt from '../assets/img/OIP.jpg'
 
 const Home = ({ isAuthenticated, setIsAuthenticated }) => {
   return (
@@ -81,7 +86,7 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
         <div className="services-grid">
           <div className="service-card">
             <img 
-              src="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400" 
+              src= {img1}
               alt="AI Waste Classification" 
             />
             <h3>AI Waste Classification</h3>
@@ -89,7 +94,7 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
           </div>
           <div className="service-card">
             <img 
-              src="https://images.unsplash.com/photo-1586973725142-1a4b6b8f2de0?w=400" 
+              src={img2}
               alt="Smart Disposal Guidance" 
             />
             <h3>Smart Disposal Guidance</h3>
@@ -97,7 +102,7 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
           </div>
           <div className="service-card">
             <img 
-              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400" 
+              src={img3}
               alt="Classification History Analytics" 
             />
             <h3>Classification History & Analytics</h3>
@@ -111,7 +116,7 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
         <div className="mission-content">
           <div className="mission-image">
             <img 
-              src="https://images.unsplash.com/photo-1618477388954-7852f32655ec?w=600" 
+              src={img4}
               alt="Volunteers" 
             />
           </div>
@@ -143,7 +148,7 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
             <div className="testimonial-header">
               <img 
                 src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" 
-                alt="Client" 
+                alt={alt} 
               />
               <div>
                 <h4>John Doe</h4>
@@ -159,7 +164,7 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
             <div className="testimonial-header">
               <img 
                 src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" 
-                alt="Client" 
+                alt={alt} 
               />
               <div>
                 <h4>Jane Smith</h4>
