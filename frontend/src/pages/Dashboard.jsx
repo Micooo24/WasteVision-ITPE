@@ -92,14 +92,14 @@ function Dashboard() {
       console.log('📹 Requesting camera permission...')
       
       // Request camera with constraints (similar to reference code)
-      const constraints = {
-        video: {
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
-          facingMode: 'user' // Front camera
-        },
-        audio: false
-      }
+    const constraints = {
+      video: {
+        width: { ideal: 720, max: 720 },    // ← Change these
+        height: { ideal: 720, max: 720 },   // ← Change these
+        facingMode: 'user'
+      },
+      audio: false
+    }
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       
@@ -595,9 +595,9 @@ function Dashboard() {
                 <div style={{ 
                   position: 'relative', 
                   width: '100%', 
-                  maxWidth: '640px', 
+                  maxWidth: '320px', 
                   margin: '0 auto', 
-                  aspectRatio: '4/3', 
+                  aspectRatio: '1/1', 
                   backgroundColor: '#000', 
                   borderRadius: '8px', 
                   overflow: 'hidden', 
@@ -685,7 +685,7 @@ function Dashboard() {
                 
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', maxWidth: '640px', margin: '0 auto' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', maxWidth: '320px', margin: '0 auto' }}>
                   {!isCameraActive && !capturedImage && (
                     <button 
                       onClick={startCamera}

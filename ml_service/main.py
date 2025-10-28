@@ -74,7 +74,7 @@ except Exception as e:
     raise
 
 # Detection configuration
-CONF_THRESHOLD = 0.25
+CONF_THRESHOLD = 0.15
 IOU_THRESHOLD = 0.15
 MAX_DETECTIONS = 1000
 
