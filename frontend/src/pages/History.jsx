@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
-import Footer from '../components/Footer'
 import { apiService } from '../services/api'
+import toast from 'react-hot-toast'
 import '../assets/css/dashboard.css'
 
-function History() {
+function History({ isAuthenticated, setIsAuthenticated }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [recordToDelete, setRecordToDelete] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
@@ -48,8 +51,40 @@ function History() {
       setShowModal(true)
     } catch (err) {
       console.error('Error fetching record details:', err)
-      alert('Failed to load record details')
+      toast.error('Failed to load record details')
     }
+  }
+
+  const handleDeleteClick = (e, record) => {
+    e.stopPropagation() // Prevent triggering view details
+    setRecordToDelete(record)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!recordToDelete) return
+
+    try {
+      setDeleting(true)
+      await apiService.deleteRecord(recordToDelete._id)
+      
+      // Remove from local state
+      setHistory(history.filter(record => record._id !== recordToDelete._id))
+      
+      toast.success('Record deleted successfully')
+      setShowDeleteModal(false)
+      setRecordToDelete(null)
+    } catch (err) {
+      console.error('Error deleting record:', err)
+      toast.error('Failed to delete record. Please try again.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false)
+    setRecordToDelete(null)
   }
 
   const closeModal = () => {
@@ -70,9 +105,10 @@ function History() {
 
   return (
     <div className="app-container">
-      <Navbar />
+      <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated}/>
       <div className="main-content">
         <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
+
         <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
           <div className="dashboard-header">
             <h2>Classification History</h2>
@@ -99,8 +135,6 @@ function History() {
                 <div 
                   key={record._id} 
                   className="history-card"
-                  onClick={() => handleViewDetails(record._id)}
-                  style={{ cursor: 'pointer' }}
                 >
                   {record.image && (
                     <div className="history-image">
@@ -122,7 +156,21 @@ function History() {
                         </p>
                       </div>
                     )}
-                    <button className="btn-view-details">View Details</button>
+                    <div className="history-actions">
+                      <button 
+                        className="btn-view-details"
+                        onClick={() => handleViewDetails(record._id)}
+                      >
+                        View Details
+                      </button>
+                      <button 
+                        className="btn-delete"
+                        onClick={(e) => handleDeleteClick(e, record)}
+                        title="Delete record"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -130,7 +178,6 @@ function History() {
           )}
         </main>
       </div>
-      <Footer className={isCollapsed ? 'collapsed' : ''} />
 
       {/* Details Modal */}
       {showModal && selectedRecord && (
@@ -194,6 +241,44 @@ function History() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && recordToDelete && (
+        <div className="modal-overlay" onClick={cancelDelete}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Confirm Delete</h3>
+              <button className="modal-close" onClick={cancelDelete}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to delete this record?</p>
+              {recordToDelete.items && recordToDelete.items.length > 0 && (
+                <div className="delete-preview">
+                  <strong>{recordToDelete.items[0].item}</strong>
+                  <p className="delete-date">{formatDate(recordToDelete.createdAt)}</p>
+                </div>
+              )}
+              <p className="warning-text">This action cannot be undone.</p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="btn btn-secondary" 
+                onClick={cancelDelete}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-danger" 
+                onClick={confirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
             </div>
           </div>
         </div>

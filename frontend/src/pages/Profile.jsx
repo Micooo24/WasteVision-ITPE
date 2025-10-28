@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
-import Footer from '../components/Footer'
 import Snackbar from '../components/Snackbar'
 import { apiService } from '../services/api'
 import { getUser, saveUser } from '../services/auth'
 import '../assets/css/dashboard.css'
 
-function Profile() {
+function Profile({ isAuthenticated, setIsAuthenticated }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -160,7 +159,7 @@ function Profile() {
 
   return (
     <div className="app-container">
-      <Navbar />
+      <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
       <div className="main-content">
         <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
         <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
@@ -317,7 +316,6 @@ function Profile() {
           </div>
         </main>
       </div>
-      <Footer className={isCollapsed ? 'collapsed' : ''} />
       
       <Snackbar
         isOpen={snackbar.isOpen}

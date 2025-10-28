@@ -165,6 +165,9 @@ export const apiService = {
   // Get specific record by ID
   getRecordById: (id) => api.get(`/user/user-records/${id}`),
   
+  // Delete record by ID
+  deleteRecord: (id) => api.delete(`/user/user-records/${id}`),
+  
   // User Profile
   getProfile: () => api.get('/auth/profile'),
   updateProfile: (data) => api.put('/auth/profile', data),

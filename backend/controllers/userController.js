@@ -125,3 +125,39 @@ exports.fetchRecordById = async (req, res) => {
     });
   }
 };
+
+// ...existing code...
+
+// Delete a record by ID
+exports.deleteRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find the record first to verify ownership
+    const record = await UserActivity.findOne({ 
+      _id: id, 
+      user: req.user.id 
+    });
+
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        message: "Record not found or you don't have permission to delete it"
+      });
+    }
+
+    // Delete the record
+    await UserActivity.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Record deleted successfully"
+    });
+  } catch (error) {
+    console.log("Error in deleteRecord:", error.message);
+    return res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+};

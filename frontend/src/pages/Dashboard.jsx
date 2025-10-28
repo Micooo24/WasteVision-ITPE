@@ -2,17 +2,15 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
-import Footer from '../components/Footer'
 import { apiService } from '../services/api'
 import '../assets/css/dashboard.css'
 
-function Dashboard() {
+function Dashboard({ isAuthenticated, setIsAuthenticated }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [statistics, setStatistics] = useState(null)
   const [detectedImages, setDetectedImages] = useState({ custom: null, default: null })
   const [allDetections, setAllDetections] = useState([])
   const [activeModel, setActiveModel] = useState('custom')
@@ -30,7 +28,6 @@ function Dashboard() {
   }
 
   useEffect(() => {
-    fetchStatistics()
     
     // Cleanup camera on unmount
     return () => {
@@ -39,17 +36,7 @@ function Dashboard() {
       }
     }
   }, [])
-
-  const fetchStatistics = async () => {
-    try {
-      const response = await apiService.getStatistics()
-      setStatistics(response.data)
-    } catch (error) {
-      console.error('Error fetching statistics:', error)
-      toast.error('Failed to fetch statistics')
-    }
-  }
-
+  
   // Enhanced Start Camera with better error handling and debugging
   const startCamera = async () => {
     try {
@@ -423,9 +410,6 @@ function Dashboard() {
         console.log('Total detections:', response.data.allDetections.length)
       }
       
-      // Update statistics
-      fetchStatistics()
-      
       toast.success('✅ Waste classified successfully!', {
         id: loadingToast,
         duration: 4000,
@@ -471,7 +455,7 @@ function Dashboard() {
 
   return (
     <div className="app-container">
-      <Navbar />
+      <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
       <div className="main-content">
         <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
         <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
@@ -481,23 +465,6 @@ function Dashboard() {
               Upload an image or use your camera to classify waste with AI
             </p>
           </div>
-
-          {statistics && (
-            <div className="statistics-grid">
-              <div className="stat-card">
-                <h3>Total Classifications</h3>
-                <p className="stat-number">{statistics.totalClassifications || 0}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Recyclable Items</h3>
-                <p className="stat-number">{statistics.recyclable || 0}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Non-Recyclable Items</h3>
-                <p className="stat-number">{statistics.nonRecyclable || 0}</p>
-              </div>
-            </div>
-          )}
 
           {/* Mode Selector */}
           <div className="upload-section">
@@ -864,7 +831,6 @@ function Dashboard() {
           )}
         </main>
       </div>
-      <Footer className={isCollapsed ? 'collapsed' : ''} />
     </div>
   )
 }

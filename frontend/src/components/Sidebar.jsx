@@ -1,12 +1,12 @@
-import { NavLink } from 'react-router-dom'
-import '../assets/css/components.css'
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import '../assets/css/sidebar.css';
 
-function Sidebar({ isCollapsed, toggleSidebar }) {
+const Sidebar = ({ isCollapsed, toggleSidebar }) => {
   return (
     <>
       <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         <nav className="sidebar-nav">
-          
           <NavLink 
             to="/dashboard" 
             className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'}
@@ -51,7 +51,7 @@ function Sidebar({ isCollapsed, toggleSidebar }) {
         {isCollapsed ? '›' : '‹'}
       </button>
     </>
-  )
-}
+  );
+};
 
-export default Sidebar
+export default Sidebar;

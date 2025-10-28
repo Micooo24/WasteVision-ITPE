@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import Home from './pages/Home'
+import About from './pages/About'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -30,12 +31,12 @@ function App() {
 
   // Protected routes - requires authentication
   const PrivateRoute = ({ children }) => {
-    return isAuthenticated ? children : <Navigate to="/login" />
+    return isAuthenticated ? children : <Navigate to="/login" replace />
   }
 
   // Public routes - redirects to dashboard if already logged in
   const PublicRoute = ({ children }) => {
-    return isAuthenticated ? <Navigate to="/dashboard" /> : children
+    return isAuthenticated ? <Navigate to="/dashboard" replace /> : children
   }
 
   return (
@@ -45,53 +46,30 @@ function App() {
         reverseOrder={false}
         gutter={8}
         toastOptions={{
-          // Default options
           duration: 3000,
           style: {
             background: '#363636',
             color: '#fff',
-            fontSize: '14px',
-            borderRadius: '8px',
-            padding: '12px 20px',
           },
-          // Success
           success: {
             duration: 3000,
-            style: {
-              background: '#4caf50',
-            },
             iconTheme: {
-              primary: '#fff',
-              secondary: '#4caf50',
+              primary: '#10b981',
+              secondary: '#fff',
             },
           },
-          // Error
           error: {
             duration: 4000,
-            style: {
-              background: '#f44336',
-            },
             iconTheme: {
-              primary: '#fff',
-              secondary: '#f44336',
-            },
-          },
-          // Loading
-          loading: {
-            style: {
-              background: '#2196f3',
-            },
-            iconTheme: {
-              primary: '#fff',
-              secondary: '#2196f3',
+              primary: '#ef4444',
+              secondary: '#fff',
             },
           },
         }}
       />
-      
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/home" element={<Home />} />
+        <Route path="/" element={<Home isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />} />
+        <Route path="/about" element={<About isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />} />
         <Route path="/login" element={
           <PublicRoute>
             <Login setIsAuthenticated={setIsAuthenticated} />
@@ -104,22 +82,22 @@ function App() {
         } />
         <Route path="/dashboard" element={
           <PrivateRoute>
-            <Dashboard />
+            <Dashboard isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
           </PrivateRoute>
         } />
         <Route path="/history" element={
           <PrivateRoute>
-            <History />
+            <History isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
           </PrivateRoute>
         } />
         <Route path="/tips" element={
           <PrivateRoute>
-            <Tips />
+            <Tips isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
           </PrivateRoute>
         } />
         <Route path="/profile" element={
           <PrivateRoute>
-            <Profile />
+            <Profile isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
           </PrivateRoute>
         } />
       </Routes>

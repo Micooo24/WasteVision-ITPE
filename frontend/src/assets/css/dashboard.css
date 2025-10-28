@@ -12,9 +12,9 @@
 
 .content {
   flex: 1;
-  padding: 32px;
+  padding: 80px;
   margin-left: 250px;
-  margin-top: 64px;
+  margin-top: -30px;
   transition: margin-left 0.3s ease;
   min-height: calc(100vh - 64px - 48px); /* navbar height - footer height */
 }
@@ -251,6 +251,83 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+/* History Actions */
+.history-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.history-actions .btn-view-details {
+  flex: 1;
+}
+
+.btn-delete {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.btn-delete:hover {
+  background: #dc2626;
+  transform: translateY(-2px);
+}
+
+.btn-delete:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Delete Modal Styles */
+.delete-preview {
+  background: #f3f4f6;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.delete-preview strong {
+  display: block;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.delete-date {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.warning-text {
+  color: #ef4444;
+  font-weight: 600;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.modal-footer .btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.modal-footer .btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.modal-footer .btn-danger:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
 }
 
 .item-detail {

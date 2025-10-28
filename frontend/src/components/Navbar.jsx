@@ -1,56 +1,107 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { logout, getUser } from '../services/auth'
-import '../assets/css/components.css'
-import LogoutModal from './LogoutModal'
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import LogoutModal from './LogoutModal';
+import { getUser, getToken, removeToken } from '../services/auth';
+import '../assets/css/navbar.css';
 
-function Navbar() {
-  const user = getUser()
-  const navigate = useNavigate()
-  const [showLogoutModal, setShowLogoutModal] = useState(false)
+const Navbar = ({ isAuthenticated, setIsAuthenticated }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [userName, setUserName] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleLogoutClick = () => {
-    setShowLogoutModal(true)
-  }
+  useEffect(() => {
+    // Update user info when auth state or route changes
+    const user = getUser();
+    setUserName(user?.name || 'User');
+  }, [isAuthenticated, location.pathname]);
 
-  const handleLogoutConfirm = () => {
-    logout()
-    setShowLogoutModal(false)
-    navigate('/login')
-  }
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
 
-  const handleLogoutCancel = () => {
-    setShowLogoutModal(false)
-  }
+  const handleLogout = () => {
+    setIsLogoutModalOpen(true);
+  };
+
+  const confirmLogout = () => {
+    removeToken(); // Use the auth service helper
+    setIsAuthenticated(false);
+    setIsLogoutModalOpen(false);
+    navigate('/login', { replace: true });
+  };
+
+  const cancelLogout = () => {
+    setIsLogoutModalOpen(false);
+  };
+
+  const handleLoginClick = () => {
+    setIsMenuOpen(false);
+    navigate('/login');
+  };
 
   return (
-    <nav className="navbar">
-      <div className="navbar-container">
-        <Link to="/home" className="navbar-brand">
-          <span className="navbar-logo">♻️</span>
-          <h1>WasteVision</h1>
-        </Link>
-        <div className="navbar-menu">
-          {user && (
-            <>
-              <span className="navbar-user">
-                {user?.name || 'User'}
-              </span>
-              <button onClick={handleLogoutClick} className="btn btn-logout">
-                Logout
-              </button>
+    <>
+      <nav className="navbar">
+        <div className="navbar-container">
+          <Link to="/" className="navbar-logo">
+            <span className="logo-eco">Waste</span>
+            <span className="logo-bin">Vision</span>
+            <div className="logo-squares">
+              <span className="square orange"></span>
+              <span className="square green"></span>
+              <span className="square blue"></span>
+            </div>
+          </Link>
 
-              <LogoutModal 
-                isOpen={showLogoutModal}
-                onConfirm={handleLogoutConfirm}
-                onCancel={handleLogoutCancel}
-              />
-            </>
+          <button 
+            className={`menu-toggle ${isMenuOpen ? 'active' : ''}`}
+            onClick={toggleMenu}
+            aria-label="Toggle menu"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <ul className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
+            <li><Link to="/" onClick={() => setIsMenuOpen(false)}>Home</Link></li>
+            {isAuthenticated && (
+              <li><Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>Dashboard</Link></li>
+            )}
+            <li><Link to="/about" onClick={() => setIsMenuOpen(false)}>About Us</Link></li>
+            <li><Link to="/tips" onClick={() => setIsMenuOpen(false)}>Blog</Link></li>
+          </ul>
+
+          {isAuthenticated ? (
+            <div className="navbar-cta navbar-user-section">
+              <span className="navbar-username">{userName}</span>
+              <button 
+                className="navbar-logout-btn" 
+                onClick={handleLogout}
+                aria-label="Logout"
+                title="Logout"
+              >
+                ×
+              </button>
+            </div>
+          ) : (
+            <button className="navbar-cta" onClick={handleLoginClick}>
+              Log In
+            </button>
           )}
         </div>
-      </div>
-    </nav>
-  )
-}
+      </nav>
 
-export default Navbar
+      <LogoutModal 
+        isOpen={isLogoutModalOpen}
+        onClose={cancelLogout}
+        onConfirm={confirmLogout}
+        onCancel={cancelLogout}
+      />
+    </>
+  );
+};
+
+export default Navbar;

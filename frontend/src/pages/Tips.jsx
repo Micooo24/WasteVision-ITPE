@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
-import Footer from '../components/Footer'
 import { apiService } from '../services/api'
 import '../assets/css/dashboard.css'
 
-function Tips() {
+function Tips({ isAuthenticated, setIsAuthenticated }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [tips, setTips] = useState([])
   const [loading, setLoading] = useState(true)
@@ -49,7 +48,7 @@ function Tips() {
 
   return (
     <div className="app-container">
-      <Navbar />
+      <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
       <div className="main-content">
         <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
         <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
@@ -72,7 +71,6 @@ function Tips() {
           )}
         </main>
       </div>
-      <Footer className={isCollapsed ? 'collapsed' : ''} />
     </div>
   )
 }
