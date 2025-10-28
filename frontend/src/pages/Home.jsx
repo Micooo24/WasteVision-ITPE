@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import '../assets/css/home.css';
+import hero from '../assets/img/group-multi-colored-trash-cans-are-sidewalk_921860-178361.jpg';
+import about from '../assets/img/robotic-waste-optimization-ai-powered-circular-economy-analytics-efficient-sustainability_1223049-701.jpg';
 
 const Home = ({ isAuthenticated, setIsAuthenticated }) => {
   return (
@@ -22,37 +24,17 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
               boundless future, together on the journey towards 
               a greener, more harmonious tomorrow.
             </p>
-            <Link to="/register" className="cta-button">
+            <Link to="/about" className="cta-button">
               Learn More
               <span className="arrow">→</span>
             </Link>
           </div>
           <div className="hero-image">
             <img 
-              src="https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800" 
+              src={hero} 
               alt="Recycling bins with plastic bottles" 
             />
           </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="stats-section">
-        <div className="stat-card">
-          <h3 className="stat-number">22+</h3>
-          <p className="stat-label">Years Experience</p>
-        </div>
-        <div className="stat-card">
-          <h3 className="stat-number">9.2k</h3>
-          <p className="stat-label">Happy Customers</p>
-        </div>
-        <div className="stat-card">
-          <h3 className="stat-number">520</h3>
-          <p className="stat-label">Projects Completed</p>
-        </div>
-        <div className="stat-card">
-          <h3 className="stat-number">226</h3>
-          <p className="stat-label">Expert Team</p>
         </div>
       </section>
 
@@ -62,13 +44,15 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
           <div className="about-text">
             <span className="section-tag">About Us</span>
             <h2 className="section-title">
-              Work Together to Clean<br />
-              The Ocean
+              AI-Powered Waste<br />
+              Classification for a <span className="highlight">Greener</span> Future
             </h2>
             <p className="section-description">
-              Lorem ipsum is simply dummy text of the printing and 
-              typesetting industry. Lorem Ipsum has been the 
-              industry's standard dummy text ever since the 1500s.
+              WasteVision revolutionizes waste management through cutting-edge 
+              artificial intelligence. Our advanced computer vision technology 
+              accurately identifies and classifies different types of waste, 
+              helping individuals and communities make informed recycling decisions 
+              for a more sustainable planet.
             </p>
             <Link to="/about" className="cta-button">
               Learn More
@@ -77,12 +61,12 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
           </div>
           <div className="about-image">
             <img 
-              src="https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=600" 
-              alt="Waste collection worker" 
+              src={about}
+              alt="AI technology analyzing waste materials" 
             />
             <div className="stat-badge">
-              <h3>22+</h3>
-              <p>Years Experience</p>
+              <h3>95%+</h3>
+              <p>Classification Accuracy</p>
             </div>
           </div>
         </div>
@@ -97,27 +81,27 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
         <div className="services-grid">
           <div className="service-card">
             <img 
-              src="https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=400" 
-              alt="Waste Management" 
+              src="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400" 
+              alt="AI Waste Classification" 
             />
-            <h3>Waste Management</h3>
-            <p>Efficient waste collection and disposal solutions for a cleaner environment.</p>
+            <h3>AI Waste Classification</h3>
+            <p>Upload an image and get instant AI-powered identification of waste types with 95%+ accuracy using advanced computer vision technology.</p>
           </div>
           <div className="service-card">
             <img 
-              src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=400" 
-              alt="Recycle Service" 
+              src="https://images.unsplash.com/photo-1586973725142-1a4b6b8f2de0?w=400" 
+              alt="Smart Disposal Guidance" 
             />
-            <h3>Recycle Service</h3>
-            <p>Transform waste into valuable resources through our recycling programs.</p>
+            <h3>Smart Disposal Guidance</h3>
+            <p>Receive personalized recycling instructions and disposal methods based on your waste items to ensure proper environmental handling.</p>
           </div>
           <div className="service-card">
             <img 
-              src="https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=400" 
-              alt="Community Campaign" 
+              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400" 
+              alt="Classification History Analytics" 
             />
-            <h3>Community Campaign</h3>
-            <p>Join our initiatives to raise awareness and promote sustainable practices.</p>
+            <h3>Classification History & Analytics</h3>
+            <p>Track your environmental impact with detailed classification history and analytics to monitor your sustainable living progress.</p>
           </div>
         </div>
       </section>
@@ -194,13 +178,13 @@ const Home = ({ isAuthenticated, setIsAuthenticated }) => {
       <section className="cta-section">
         <div className="cta-content">
           <div className="cta-text">
-            <h2>FAQ</h2>
-            <h3>We cannot waste or lose time!</h3>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+            <h2>Ready to Get Started?</h2>
+            <h3>Transform Your Waste Management Today!</h3>
+            <p>Join thousands of users making a positive environmental impact with AI-powered waste classification.</p>
           </div>
           <div className="cta-text">
-            <h3>Are you a nature lover?</h3>
-            <Link to="/register" className="btn-light">Join Now</Link>
+            <h3>Start Classifying Your Waste</h3>
+            <Link to="/register" className="btn-light">Get Started Now</Link>
           </div>
         </div>
       </section>

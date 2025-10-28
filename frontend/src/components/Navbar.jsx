@@ -83,7 +83,7 @@ const Navbar = ({ isAuthenticated, setIsAuthenticated }) => {
                 aria-label="Logout"
                 title="Logout"
               >
-                ×
+                <i className="fas fa-sign-out-alt"></i>
               </button>
             </div>
           ) : (
