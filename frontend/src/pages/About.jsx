@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import '../assets/css/about.css';
+import hero from '../assets/img/group-multi-colored-trash-cans-are-sidewalk_921860-178361.jpg';
+import img1 from '../assets/img/img1.jpg'
+import alt from '../assets/img/OIP.jpg'
 
 const About = ({ isAuthenticated, setIsAuthenticated }) => {
   return (
@@ -76,7 +79,7 @@ const About = ({ isAuthenticated, setIsAuthenticated }) => {
           </div>
           <div className="story-image">
             <img 
-              src="https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=600" 
+              src={hero}
               alt="Team working on sustainability" 
             />
           </div>
@@ -161,7 +164,7 @@ const About = ({ isAuthenticated, setIsAuthenticated }) => {
         <div className="technology-content">
           <div className="technology-image">
             <img 
-              src="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600" 
+              src={img1}
               alt="AI Technology" 
             />
           </div>
@@ -228,10 +231,10 @@ const About = ({ isAuthenticated, setIsAuthenticated }) => {
             <div className="team-image">
               <img 
                 src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300" 
-                alt="Team member" 
+                alt={alt}
               />
             </div>
-            <h3>John Anderson</h3>
+            <h3>bridget andersen</h3>
             <p className="team-role">CEO & Co-Founder</p>
             <p className="team-bio">Environmental scientist with 15+ years of experience</p>
           </div>
@@ -240,10 +243,10 @@ const About = ({ isAuthenticated, setIsAuthenticated }) => {
             <div className="team-image">
               <img 
                 src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300" 
-                alt="Team member" 
+                alt={alt}
               />
             </div>
-            <h3>Sarah Chen</h3>
+            <h3>student 1</h3>
             <p className="team-role">CTO & Co-Founder</p>
             <p className="team-bio">AI researcher specializing in computer vision</p>
           </div>
@@ -252,10 +255,10 @@ const About = ({ isAuthenticated, setIsAuthenticated }) => {
             <div className="team-image">
               <img 
                 src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300" 
-                alt="Team member" 
+                alt={alt}
               />
             </div>
-            <h3>Michael Torres</h3>
+            <h3>student 2</h3>
             <p className="team-role">Head of Engineering</p>
             <p className="team-bio">Full-stack developer passionate about sustainability</p>
           </div>
@@ -264,10 +267,10 @@ const About = ({ isAuthenticated, setIsAuthenticated }) => {
             <div className="team-image">
               <img 
                 src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=300" 
-                alt="Team member" 
+                alt={alt}
               />
             </div>
-            <h3>Emily Roberts</h3>
+            <h3>student 3</h3>
             <p className="team-role">Head of Operations</p>
             <p className="team-bio">Operations expert with sustainability focus</p>
           </div>
