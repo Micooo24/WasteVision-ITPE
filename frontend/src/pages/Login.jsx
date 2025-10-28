@@ -1,33 +1,28 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
+import { Formik, Form, Field, ErrorMessage } from 'formik'
+import * as Yup from 'yup'
 import toast from 'react-hot-toast'
 import { apiService } from '../services/api'
 import { saveToken, saveUser } from '../services/auth'
 import '../assets/css/auth.css'
 
+const LoginSchema = Yup.object().shape({
+  email: Yup.string()
+    .email('Invalid email address')
+    .required('Email is required'),
+  password: Yup.string()
+    .min(6, 'Password must be at least 6 characters')
+    .required('Password is required')
+})
+
 function Login({ setIsAuthenticated }) {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
-  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-
+  const handleSubmit = async (values, { setSubmitting }) => {
     const loadingToast = toast.loading('Logging in...')
 
     try {
-      const response = await apiService.login(formData)
+      const response = await apiService.login(values)
       const { token, user } = response.data
       
       saveToken(token)
@@ -47,46 +42,143 @@ function Login({ setIsAuthenticated }) {
         duration: 4000,
       })
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
   return (
     <div className="auth-container">
-      <div className="auth-card">
-        <h2>Login to WasteVision</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              placeholder="Enter your email"
-            />
+      <div className="auth-left">
+        <div className="auth-brand">
+          <h1 className="brand-title">WasteVision</h1>
+          <p className="brand-subtitle">Smart Waste Classification System</p>
+        </div>
+      </div>
+      
+      <div className="auth-right">
+        <div className="auth-card">
+          <div className="auth-header">
+            <h2>Welcome Back</h2>
+            <p>Please sign in to continue</p>
           </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder="Enter your password"
-            />
+          
+          <Formik
+            initialValues={{
+              email: '',
+              password: '',
+              rememberMe: false
+            }}
+            validationSchema={LoginSchema}
+            onSubmit={handleSubmit}
+            validateOnChange={true}
+            validateOnBlur={true}
+          >
+            {({ errors, touched, isSubmitting, values }) => (
+              <Form className="auth-form">
+                <div className="form-group">
+                  <label htmlFor="email">Email Address</label>
+                  <div className="input-wrapper">
+                    <Field
+                      type="email"
+                      id="email"
+                      name="email"
+                      placeholder="Enter your email"
+                      className={`form-input ${
+                        touched.email 
+                          ? errors.email 
+                            ? 'input-error' 
+                            : 'input-success'
+                          : ''
+                      }`}
+                    />
+                    {touched.email && (
+                      <span className="input-icon">
+                        {errors.email ? (
+                          <svg className="icon-error" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 0C4.48 0 0 4.48 0 10s4.48 10 10 10 10-4.48 10-10S15.52 0 10 0zm1 15H9v-2h2v2zm0-4H9V5h2v6z" fill="currentColor"/>
+                          </svg>
+                        ) : (
+                          <svg className="icon-success" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 0C4.48 0 0 4.48 0 10s4.48 10 10 10 10-4.48 10-10S15.52 0 10 0zm-2 15l-5-5 1.41-1.41L8 12.17l7.59-7.59L17 6l-9 9z" fill="currentColor"/>
+                          </svg>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <ErrorMessage name="email" component="div" className="error-message" />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="password">Password</label>
+                  <div className="input-wrapper">
+                    <Field name="password">
+                      {({ field, form }) => (
+                        <div className="password-wrapper">
+                          <input
+                            {...field}
+                            type={form.values.showPassword ? 'text' : 'password'}
+                            id="password"
+                            placeholder="Enter your password"
+                            className={`form-input ${
+                              touched.password 
+                                ? errors.password 
+                                  ? 'input-error' 
+                                  : 'input-success'
+                                : ''
+                            }`}
+                          />
+                          {touched.password && (
+                            <span className="input-icon password-icon">
+                              {errors.password ? (
+                                <svg className="icon-error" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                  <path d="M10 0C4.48 0 0 4.48 0 10s4.48 10 10 10 10-4.48 10-10S15.52 0 10 0zm1 15H9v-2h2v2zm0-4H9V5h2v6z" fill="currentColor"/>
+                                </svg>
+                              ) : (
+                                <svg className="icon-success" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                  <path d="M10 0C4.48 0 0 4.48 0 10s4.48 10 10 10 10-4.48 10-10S15.52 0 10 0zm-2 15l-5-5 1.41-1.41L8 12.17l7.59-7.59L17 6l-9 9z" fill="currentColor"/>
+                                </svg>
+                              )}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className="password-toggle"
+                            onClick={() => form.setFieldValue('showPassword', !form.values.showPassword)}
+                          >
+                            {form.values.showPassword ? 'Hide' : 'Show'}
+                          </button>
+                        </div>
+                      )}
+                    </Field>
+                  </div>
+                  <ErrorMessage name="password" component="div" className="error-message" />
+                </div>
+                
+                <div className="form-options">
+                  <label className="checkbox-label">
+                    <Field type="checkbox" name="rememberMe" />
+                    <span>Remember me</span>
+                  </label>
+                </div>
+                
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Signing in...' : 'Sign In'}
+                </button>
+              </Form>
+            )}
+          </Formik>
+          
+          <div className="auth-footer">
+            <p>
+              Don't have an account? 
+              <Link to="/register" className="text-link-primary"> Sign up</Link>
+            </p>
           </div>
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-        <p className="auth-link">
-          Don't have an account? <Link to="/register">Register here</Link>
-        </p>
+        </div>
       </div>
     </div>
   )
