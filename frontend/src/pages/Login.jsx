@@ -49,6 +49,21 @@ function Login({ setIsAuthenticated }) {
   return (
     <div className="auth-container">
       <div className="auth-left">
+        {/* Video Background */}
+        <video 
+          autoPlay 
+          loop 
+          muted 
+          playsInline
+          className="auth-video-bg"
+        >
+          <source src="animation.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+        
+        {/* Overlay for better text readability */}
+        <div className="auth-video-overlay"></div>
+        
         <div className="auth-brand">
           <h1 className="brand-title">WasteVision</h1>
           <p className="brand-subtitle">Smart Waste Classification System</p>
