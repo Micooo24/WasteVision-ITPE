@@ -19,15 +19,21 @@ export const exportHistoryToPDF = async (historyData, userInfo) => {
     const pageHeight = doc.internal.pageSize.height;
     
     // Header Section
-    const headerHeight = 40;
+    const headerHeight = 45;
+    const logoSize = 25; // Consistent logo size
+    const logoY = 10; // Vertical position for logos
     
     // Try to add logos (handle gracefully if not found)
     const wastevisionLogo = getLogoPath('wastevision-logo.png');
     const tupLogo = getLogoPath('tup-logo.png');
     
+    // Calculate positions for balanced layout
+    const leftLogoX = 20; // Left logo position
+    const rightLogoX = pageWidth - 20 - logoSize; // Right logo position
+    
     if (wastevisionLogo) {
       try {
-        doc.addImage(wastevisionLogo, 'PNG', 15, 10, 30, 15);
+        doc.addImage(wastevisionLogo, 'PNG', leftLogoX, logoY, logoSize, logoSize);
       } catch (error) {
         console.warn('WasteVision logo not found or failed to load');
       }
@@ -35,27 +41,27 @@ export const exportHistoryToPDF = async (historyData, userInfo) => {
     
     if (tupLogo) {
       try {
-        doc.addImage(tupLogo, 'PNG', pageWidth - 45, 10, 30, 15);
+        doc.addImage(tupLogo, 'PNG', rightLogoX, logoY, logoSize, logoSize);
       } catch (error) {
         console.warn('TUP logo not found or failed to load');
       }
     }
     
-    // Title and description (center)
+    // Title and description (center) - positioned below logos
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('WasteVision Classification History Report', pageWidth / 2, 20, { align: 'center' });
+    doc.text('WasteVision Classification History Report', pageWidth / 2, 23, { align: 'center' });
     
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text('AI-Powered Waste Classification and Environmental Data Report', pageWidth / 2, 25, { align: 'center' });
+    doc.text('AI-Powered Waste Classification and Environmental Data Report', pageWidth / 2, 29, { align: 'center' });
     
     // Add line separator
     doc.setLineWidth(0.5);
     doc.line(15, headerHeight - 5, pageWidth - 15, headerHeight - 5);
     
     // User Information Section
-    let yPosition = headerHeight + 10;
+    let yPosition = headerHeight + 5;
     
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
