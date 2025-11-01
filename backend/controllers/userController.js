@@ -159,3 +159,72 @@ exports.deleteRecord = async (req, res) => {
     });
   }
 };
+
+exports.getUserStatistics = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Fetch all user records
+    const records = await UserActivity.find({ user: userId });
+    
+    // Calculate statistics
+    const stats = {
+      totalClassifications: records.length,
+      recyclableCount: 0,
+      nonRecyclableCount: 0,
+      categoryBreakdown: {},
+      recentActivity: records.length > 0 ? records[0].createdAt : null,
+      averageConfidence: 0
+    };
+    
+    // Calculate category breakdown and average confidence
+    let totalConfidence = 0;
+    let totalItems = 0;
+    
+    records.forEach(record => {
+      // Process each item in the items array
+      if (record.items && record.items.length > 0) {
+        record.items.forEach(item => {
+          totalItems++;
+          
+          // Count recyclable vs non-recyclable
+          if (item.recyclable) {
+            stats.recyclableCount++;
+          } else {
+            stats.nonRecyclableCount++;
+          }
+          
+          // Category breakdown - use the 'type' field which contains the category
+          const category = item.type || 'Unknown';
+          stats.categoryBreakdown[category] = (stats.categoryBreakdown[category] || 0) + 1;
+          
+          // Sum up confidence (stored as decimal 0-1, convert to percentage)
+          const confidencePercent = (parseFloat(item.confidence) || 0) * 100;
+          totalConfidence += confidencePercent;
+        });
+      }
+    });
+    
+    // Calculate average confidence as percentage
+    stats.averageConfidence = totalItems > 0 
+      ? (totalConfidence / totalItems).toFixed(1) 
+      : 0;
+    
+    // Get most common category
+    const categories = Object.entries(stats.categoryBreakdown);
+    stats.mostCommonCategory = categories.length > 0
+      ? categories.sort((a, b) => b[1] - a[1])[0][0]
+      : 'None';
+    
+    return res.status(200).json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.log("Error in getUserStatistics:", error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};

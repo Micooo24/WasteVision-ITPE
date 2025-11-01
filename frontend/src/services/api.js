@@ -179,6 +179,8 @@ export const apiService = {
   // Tips
   getTips: () => api.get('/tips'),
   
+  // User Statistics
+  getUserStatistics: () => api.get('/user/statistics'),
   // Statistics
   getStatistics: () => api.get('/waste/statistics')
 };

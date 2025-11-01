@@ -17,6 +17,27 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
   const [activeModel, setActiveModel] = useState('custom')
   const [captureMode, setCaptureMode] = useState('upload')
   const [capturedImage, setCapturedImage] = useState(null)
+  const [userStats, setUserStats] = useState(null)
+  const [statsLoading, setStatsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchUserStatistics = async () => {
+      try {
+        setStatsLoading(true)
+        const response = await apiService.getUserStatistics()
+        setUserStats(response.data.stats)
+      } catch (error) {
+        console.error('Error fetching user statistics:', error)
+        toast.error('Failed to load statistics')
+      } finally {
+        setStatsLoading(false)
+      }
+    }
+
+    if (isAuthenticated) {
+      fetchUserStatistics()
+    }
+  }, [isAuthenticated])
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
@@ -249,6 +270,81 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
               Upload an image or use your camera to classify waste with AI
             </p>
           </div>
+          
+          {/* User Statistics Section */}
+          {!statsLoading && userStats && (
+            <div className="statistics-grid">
+              <div className="stat-card">
+                <h3>Total Classifications</h3>
+                <p className="stat-number">{userStats.totalClassifications}</p>
+                <p className="stat-description">Items analyzed</p>
+              </div>
+              
+              <div className="stat-card">
+                <h3>Recyclable Items</h3>
+                <p className="stat-number" style={{ color: '#10b981' }}>
+                  {userStats.recyclableCount}
+                </p>
+                <p className="stat-description">
+                  {userStats.totalClassifications > 0 
+                    ? `${((userStats.recyclableCount / userStats.totalClassifications) * 100).toFixed(1)}% of total`
+                    : '0% of total'
+                  }
+                </p>
+              </div>
+              
+              <div className="stat-card">
+                <h3>Non-Recyclable Items</h3>
+                <p className="stat-number" style={{ color: '#ef4444' }}>
+                  {userStats.nonRecyclableCount}
+                </p>
+                <p className="stat-description">
+                  {userStats.totalClassifications > 0
+                    ? `${((userStats.nonRecyclableCount / userStats.totalClassifications) * 100).toFixed(1)}% of total`
+                    : '0% of total'
+                  }
+                </p>
+              </div>
+              
+              <div className="stat-card">
+                <h3>Average Confidence</h3>
+                <p className="stat-number">{userStats.averageConfidence}%</p>
+                <p className="stat-description">Model accuracy</p>
+              </div>
+              
+              <div className="stat-card">
+                <h3>Most Common Category</h3>
+                <p className="stat-number" style={{ fontSize: '20px', textTransform: 'capitalize' }}>
+                  {userStats.mostCommonCategory}
+                </p>
+                <p className="stat-description">
+                  {userStats.categoryBreakdown[userStats.mostCommonCategory] || 0} items
+                </p>
+              </div>
+              
+              <div className="stat-card">
+                <h3>Recent Activity</h3>
+                <p className="stat-number" style={{ fontSize: '16px' }}>
+                  {userStats.recentActivity 
+                    ? new Date(userStats.recentActivity).toLocaleDateString()
+                    : 'No activity yet'
+                  }
+                </p>
+                <p className="stat-description">Last classification</p>
+              </div>
+            </div>
+          )}
+
+          {statsLoading && (
+            <div className="statistics-grid">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="stat-card" style={{ opacity: 0.6 }}>
+                  <h3>Loading...</h3>
+                  <p className="stat-number">--</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Mode Selector */}
           <div className="upload-section">
