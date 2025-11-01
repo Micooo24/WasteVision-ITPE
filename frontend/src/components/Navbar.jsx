@@ -71,21 +71,23 @@ const Navbar = ({ isAuthenticated, setIsAuthenticated }) => {
               <li><Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>Dashboard</Link></li>
             )}
             <li><Link to="/about" onClick={() => setIsMenuOpen(false)}>About Us</Link></li>
-            <li><Link to="/tips" onClick={() => setIsMenuOpen(false)}>Blog</Link></li>
+            <li><Link to="/tips" onClick={() => setIsMenuOpen(false)}>Tips</Link></li>
           </ul>
 
           {isAuthenticated ? (
-            <div className="navbar-cta navbar-user-section">
-              <span className="navbar-username">{userName}</span>
-              <button 
-                className="navbar-logout-btn" 
+            <button className="navbar-cta navbar-user-section">
+              <Link to="/profile" className="navbar-profile-link" onClick={() => setIsMenuOpen(false)}>
+                <span className="navbar-username">{userName}</span>
+              </Link>
+              <button
+                className="navbar-logout-btn"
                 onClick={handleLogout}
                 aria-label="Logout"
                 title="Logout"
               >
                 <i className="fas fa-sign-out-alt"></i>
               </button>
-            </div>
+            </button>
           ) : (
             <button className="navbar-cta" onClick={handleLoginClick}>
               Log In

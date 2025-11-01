@@ -23,22 +23,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             <span className="icon">📜</span>
             <span>History</span>
           </NavLink>
-          <NavLink 
-            to="/tips" 
-            className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'}
-            title="Tips"
-          >
-            <span className="icon">💡</span>
-            <span>Tips</span>
-          </NavLink>
-          <NavLink 
-            to="/profile" 
-            className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'}
-            title="Profile"
-          >
-            <span className="icon">👤</span>
-            <span>Profile</span>
-          </NavLink>
         </nav>
       </aside>
       
