@@ -383,42 +383,26 @@ const startCamera = async () => {
         0, 0, canvas.width, canvas.height
       )
       
-      // Convert to blob with maximum quality
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          toast.error('Failed to crop image')
-          return
-        }
-
-        // Create File object
-        const timestamp = new Date().getTime()
-        const file = new File([blob], `waste-capture-cropped-${timestamp}.jpg`, { 
-          type: 'image/jpeg',
-          lastModified: timestamp
-        })
-        
-        // Create URL for preview
-        const imageUrl = URL.createObjectURL(blob)
-        
-        console.log('✅ Image cropped and optimized for ML:', {
-          fileName: file.name,
-          fileSize: `${(blob.size / 1024).toFixed(2)} KB`,
-          dimensions: `${canvas.width}x${canvas.height}`,
-          cropArea: `${cropBox.width.toFixed(1)}% x ${cropBox.height.toFixed(1)}%`,
-          aspectRatio: aspectRatio.toFixed(2),
-          quality: 'high (0.98)'
-        })
-        
-        // Clean up
-        stopCamera()
-        setCapturedSnapshot(null)
-        setIsCropping(false)
-        
-        // Pass to parent component
-        onCapture(file, imageUrl)
-        
-        toast.success('✂️ Image cropped and optimized for detection!', { duration: 3000 })
-      }, 'image/jpeg', 0.98) // Maximum quality for ML processing
+      // Convert to data URL with maximum quality (NOT blob/File)
+      const croppedImageDataUrl = canvas.toDataURL('image/jpeg', 0.98)
+      
+      console.log('✅ Image cropped and optimized for ML:', {
+        dimensions: `${canvas.width}x${canvas.height}`,
+        cropArea: `${cropBox.width.toFixed(1)}% x ${cropBox.height.toFixed(1)}%`,
+        aspectRatio: aspectRatio.toFixed(2),
+        quality: 'high (0.98)',
+        dataUrlLength: croppedImageDataUrl.length
+      })
+      
+      // Clean up
+      stopCamera()
+      setCapturedSnapshot(null)
+      setIsCropping(false)
+      
+      // Pass ONLY data URL to parent component (Dashboard expects this format)
+      onCapture(croppedImageDataUrl)
+      
+      toast.success('✂️ Image cropped and ready for classification!', { duration: 3000 })
     }
     
     img.onerror = () => {
@@ -428,7 +412,6 @@ const startCamera = async () => {
     
     img.src = capturedSnapshot
   }, [capturedSnapshot, cropBox, onCapture, stopCamera])
-
 
   const cancelCrop = () => {
     setCapturedSnapshot(null)

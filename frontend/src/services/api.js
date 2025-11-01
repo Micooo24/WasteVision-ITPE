@@ -83,13 +83,20 @@ export const apiService = {
   checkMLHealth: () => mlApi.get('/health'),
   
   // Combined - Classify and Save with detected image
-  classifyWaste: async (imageFile) => {
+  classifyWaste: async (formDataFromDashboard) => {
     try {
-      // Step 1: Classify using ML service
-      const formData = new FormData();
-      formData.append('file', imageFile);
+      // Step 1: Extract the file from the FormData
+      const imageFile = formDataFromDashboard.get('image');
       
-      const mlResponse = await mlApi.post('/identify', formData);
+      if (!imageFile) {
+        throw new Error('No image file provided');
+      }
+
+      // Step 2: Create new FormData for ML service with correct field name
+      const mlFormData = new FormData();
+      mlFormData.append('file', imageFile); // ML service expects 'file', not 'image'
+      
+      const mlResponse = await mlApi.post('/identify', mlFormData);
       
       // Extract data from ML service response
       const customModel = mlResponse.data.custom_model;
@@ -120,7 +127,7 @@ export const apiService = {
       // Get the detected image (prefer custom model)
       const detectedImageBase64 = customModel?.image || defaultModel?.image || null;
       
-      // Step 2: Save to backend with detected image
+      // Step 3: Save to backend with detected image
       const saveFormData = new FormData();
       saveFormData.append('image', imageFile);
       saveFormData.append('wasteType', classificationData.wasteType);
@@ -147,10 +154,9 @@ export const apiService = {
             ...classificationData,
             confidence: Math.round(classificationData.confidence * 100) // Convert to percentage for display
           },
-          detectedImage: modelData?.image,
-          allDetections: detections,
-          customModel: customModel,
-          defaultModel: defaultModel
+          detected_image_custom: customModel?.image || null,
+          detected_image_default: defaultModel?.image || null,
+          all_detections: detections
         }
       };
     } catch (error) {

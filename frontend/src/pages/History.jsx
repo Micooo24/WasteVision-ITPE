@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 import { apiService } from '../services/api'
 import toast from 'react-hot-toast'
-import '../assets/css/dashboard.css'
+import '../assets/css/history.css'
 import { exportHistoryToPDF } from '../services/pdfExport';
 
 function History({ isAuthenticated, setIsAuthenticated }) {
@@ -52,7 +53,7 @@ function History({ isAuthenticated, setIsAuthenticated }) {
   }
 
   const handleDeleteClick = (e, record) => {
-    e.stopPropagation() // Prevent triggering view details
+    e.stopPropagation()
     setRecordToDelete(record)
     setShowDeleteModal(true)
   }
@@ -64,7 +65,6 @@ function History({ isAuthenticated, setIsAuthenticated }) {
       setDeleting(true)
       await apiService.deleteRecord(recordToDelete._id)
       
-      // Remove from local state
       setHistory(history.filter(record => record._id !== recordToDelete._id))
       
       toast.success('Record deleted successfully')
@@ -109,7 +109,6 @@ function History({ isAuthenticated, setIsAuthenticated }) {
     const loadingToast = toast.loading('🔄 Generating PDF report...');
 
     try {
-      // Get user info from localStorage or API
       const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
       
       const result = await exportHistoryToPDF(history, userInfo);
@@ -134,112 +133,115 @@ function History({ isAuthenticated, setIsAuthenticated }) {
   };
 
   return (
-    <div className="app-container">
-      <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated}/>
-      <div className="main-content">
+    <div className="history-container">
+      <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
+      
+      {/* Hero Section */}
+      <section className="history-hero">
+        <div className="history-hero-content">
+          <h1>Classification History</h1>
+          <p>View and manage your waste classification records</p>
+        </div>
+      </section>
 
-        <main className={`content no-sidebar`}>
-          <div className="dashboard-header">
-            <h2>Classification History</h2>
-            {history.length > 0 && (
-              <button 
-                className="btn-export-pdf"
-                onClick={handleExportPDF}
-                disabled={exportingPDF}
-                style={{
-                  backgroundColor: '#e74c3c',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '5px',
-                  cursor: exportingPDF ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  marginLeft: 'auto'
-                }}
-              >
-                {exportingPDF ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin"></i>
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-file-pdf"></i>
-                    Export to PDF
-                  </>
-                )}
-              </button>
-            )}
+      {/* Header with Export Button */}
+      <section className="history-header-section">
+        <div className="history-header-wrapper">
+          <h2>Your Classification Records</h2>
+          {history.length > 0 && (
+            <button 
+              className="btn-export-pdf"
+              onClick={handleExportPDF}
+              disabled={exportingPDF}
+            >
+              {exportingPDF ? (
+                <>
+                  <i className="fas fa-spinner fa-spin"></i>
+                  Generating PDF...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-file-pdf"></i>
+                  Export to PDF
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* History Grid Section */}
+      <section className="history-grid-section">
+        {loading && (
+          <div className="loading-message">
+            <i className="fas fa-spinner fa-spin" style={{ marginRight: '10px' }}></i>
+            Loading history...
           </div>
+        )}
 
-          {loading && (
-            <div className="loading-message">Loading history...</div>
-          )}
+        {error && (
+          <div className="error-message">
+            <i className="fas fa-exclamation-circle" style={{ marginRight: '10px' }}></i>
+            {error}
+          </div>
+        )}
 
-          {error && (
-            <div className="error-message">{error}</div>
-          )}
+        {!loading && !error && history.length === 0 && (
+          <div className="empty-state">
+            <p>📭 No classification history yet.</p>
+            <p>Start by uploading an image in the Dashboard!</p>
+          </div>
+        )}
 
-          {!loading && !error && history.length === 0 && (
-            <div className="empty-state">
-              <p>No classification history yet.</p>
-              <p>Start by uploading an image in the Dashboard!</p>
-            </div>
-          )}
-
-          {!loading && !error && history.length > 0 && (
-            <div className="history-grid">
-              {history.map((record) => (
-                <div 
-                  key={record._id} 
-                  className="history-card"
-                >
-                  {record.image && (
-                    <div className="history-image">
-                      <img src={record.image.url} alt="Classified waste" />
+        {!loading && !error && history.length > 0 && (
+          <div className="history-grid">
+            {history.map((record) => (
+              <div 
+                key={record._id} 
+                className="history-card"
+                onClick={() => handleViewDetails(record._id)}
+              >
+                {record.image && (
+                  <div className="history-image">
+                    <img src={record.image.url} alt="Classified waste" />
+                  </div>
+                )}
+                <div className="history-content">
+                  <div className="history-date">
+                    {formatDate(record.createdAt)}
+                  </div>
+                  {record.items && record.items.length > 0 && (
+                    <div className="history-summary">
+                      <p>{record.items[0].item}</p>
+                      <span className={`type-badge ${record.items[0].type?.toLowerCase()}`}>
+                        {record.items[0].type}
+                      </span>
+                      <p className="confidence-text">
+                        Confidence: {Math.round(record.items[0].confidence * 100)}%
+                      </p>
                     </div>
                   )}
-                  <div className="history-content">
-                    <div className="history-date">
-                      {formatDate(record.createdAt)}
-                    </div>
-                    {record.items && record.items.length > 0 && (
-                      <div className="history-summary">
-                        <p><strong>{record.items[0].item}</strong></p>
-                        <span className={`type-badge ${record.items[0].type?.toLowerCase()}`}>
-                          {record.items[0].type}
-                        </span>
-                        <p className="confidence-text">
-                          Confidence: {Math.round(record.items[0].confidence * 100)}%
-                        </p>
-                      </div>
-                    )}
-                    <div className="history-actions">
-                      <button 
-                        className="btn-view-details"
-                        onClick={() => handleViewDetails(record._id)}
-                      >
-                        View Details
-                      </button>
-                      <button 
-                        className="btn-delete"
-                        onClick={(e) => handleDeleteClick(e, record)}
-                        title="Delete record"
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </div>
+                  <div className="history-actions">
+                    <button 
+                      className="btn-view-details"
+                      onClick={() => handleViewDetails(record._id)}
+                    >
+                      View Details
+                    </button>
+                    <button 
+                      className="btn-delete"
+                      onClick={(e) => handleDeleteClick(e, record)}
+                      title="Delete record"
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </main>
-      </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Details Modal */}
       {showModal && selectedRecord && (
@@ -286,7 +288,7 @@ function History({ isAuthenticated, setIsAuthenticated }) {
                     <div className="detail-row">
                       <strong>Recyclable:</strong> 
                       <span className={item.recyclable ? 'recyclable-yes' : 'recyclable-no'}>
-                        {item.recyclable ? 'Yes' : 'No'}
+                        {item.recyclable ? 'Yes ✅' : 'No ❌'}
                       </span>
                     </div>
                     {item.disposalMethod && (
@@ -324,7 +326,7 @@ function History({ isAuthenticated, setIsAuthenticated }) {
                   <p className="delete-date">{formatDate(recordToDelete.createdAt)}</p>
                 </div>
               )}
-              <p className="warning-text">This action cannot be undone.</p>
+              <p className="warning-text">⚠️ This action cannot be undone.</p>
             </div>
             <div className="modal-footer">
               <button 
@@ -345,6 +347,8 @@ function History({ isAuthenticated, setIsAuthenticated }) {
           </div>
         </div>
       )}
+
+      <Footer />
     </div>
   )
 }

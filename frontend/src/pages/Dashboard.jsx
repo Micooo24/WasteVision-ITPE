@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 import Camera from './Camera'
 import { apiService } from '../services/api'
 import '../assets/css/dashboard.css'
@@ -17,7 +18,9 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
   const [capturedImage, setCapturedImage] = useState(null)
   const [userStats, setUserStats] = useState(null)
   const [statsLoading, setStatsLoading] = useState(true)
+  const [showCamera, setShowCamera] = useState(false)
 
+  // Fetch user statistics on component mount
   useEffect(() => {
     const fetchUserStatistics = async () => {
       try {
@@ -37,52 +40,16 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
     }
   }, [isAuthenticated])
 
-  // Handle Camera Capture - IMPROVED WITH VALIDATION
-  const handleCameraCapture = (file, imageUrl) => {
-    console.log('📸 Camera capture received:', {
-      fileName: file.name,
-      fileSize: `${(file.size / 1024).toFixed(2)} KB`,
-      fileType: file.type,
-      imageUrl: imageUrl ? 'URL created' : 'No URL'
-    })
-    
-    // Validate file size
-    if (file.size < 10 * 1024) {
-      toast.error('⚠️ Cropped image is too small. Please capture a larger area.')
-      return
-    }
-    
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('⚠️ Image is too large. Please try cropping a smaller area.')
-      return
-    }
-    
-    // Set the captured image data
-    setCapturedImage(imageUrl)
-    setSelectedFile(file)
-    setPreview(imageUrl)
-    
-    // Clear previous results
-    setResult(null)
-    setDetectedImages({ custom: null, default: null })
-    setAllDetections([])
-    
-    toast.success('📸 Image ready! Click "Classify Waste" to analyze.', { 
-      duration: 3000 
-    })
-  }
-
-  // Handle File Upload
   const handleFileChange = (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file')
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size should be less than 5MB')
         return
       }
-
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('Image size should be less than 10MB')
+      
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file')
         return
       }
 
@@ -90,491 +57,486 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
       const reader = new FileReader()
       reader.onloadend = () => {
         setPreview(reader.result)
-        setCapturedImage(null)
       }
       reader.readAsDataURL(file)
-      
+      setCapturedImage(null)
       setResult(null)
       setDetectedImages({ custom: null, default: null })
       setAllDetections([])
-      toast.success('Image selected successfully')
     }
   }
 
-  // Handle Submit/Classify - UNIFIED FOR ALL MODES
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault()
-    
-    if (!selectedFile) {
-      toast.error('Please select or capture an image first')
-      return
-    }
-    
-    // Validate file
-    if (!selectedFile.type.startsWith('image/')) {
-      toast.error('Invalid file type. Please use an image file.')
-      return
-    }
-    
-    // Additional validation for small images
-    if (selectedFile.size < 10 * 1024) {
-      toast.error('⚠️ Image is too small for accurate detection. Please recapture with a larger area.')
-      return
-    }
-    
-    console.log('🚀 Starting classification:', {
-      fileName: selectedFile.name,
-      fileSize: `${(selectedFile.size / 1024).toFixed(2)} KB`,
-      fileType: selectedFile.type,
-      captureMode: captureMode,
-      isCropped: selectedFile.name.includes('cropped')
+  const handleCapture = (imageData) => {
+    console.log('📸 Image captured from camera:', {
+      dataUrlLength: imageData?.length,
+      isDataUrl: imageData?.startsWith('data:image')
     })
     
-    setLoading(true)
+    // Set both capturedImage and preview with the data URL
+    setCapturedImage(imageData)
+    setPreview(imageData)
+    setSelectedFile(null)
     setResult(null)
     setDetectedImages({ custom: null, default: null })
     setAllDetections([])
     
-    const loadingToast = toast.loading('🔍 Analyzing waste with AI models...')
+    // Keep camera hidden after successful capture
+    setShowCamera(false)
     
+    toast.success('📸 Image captured! Click "Classify Waste" to analyze.', {
+      duration: 3000,
+    })
+  }
+
+  const switchMode = (mode) => {
+    setCaptureMode(mode)
+    setPreview(null)
+    setSelectedFile(null)
+    setCapturedImage(null)
+    setResult(null)
+    setDetectedImages({ custom: null, default: null })
+    setAllDetections([])
+    
+    // Show camera component when switching to camera mode
+    if (mode === 'camera') {
+      setShowCamera(true)
+    } else {
+      setShowCamera(false)
+    }
+  }
+
+  const handleClassify = async () => {
+    if (!selectedFile && !capturedImage) {
+      toast.error('Please select or capture an image first')
+      return
+    }
+
+    setLoading(true)
+    const formData = new FormData()
+
+    if (capturedImage) {
+      console.log('📤 Sending captured image to API')
+      const blob = await fetch(capturedImage).then(r => r.blob())
+      formData.append('image', blob, 'captured-image.jpg')
+    } else {
+      formData.append('image', selectedFile)
+    }
+
     try {
-      const response = await apiService.classifyWaste(selectedFile)
+      const response = await apiService.classifyWaste(formData)
       
-      console.log('✅ Classification response:', response.data)
-
-      const classification = response.data.classification || response.data
-      
-      setResult({
-        category: classification.category,
-        confidence: classification.confidence,
-        recyclable: classification.recyclable,
-        disposal_instructions: classification.disposalMethod,
-        wasteType: classification.wasteType,
-        description: classification.description
-      })
-
-      // Handle model images
-      if (response.data.custom_model || response.data.default_model || 
-          response.data.customModel || response.data.defaultModel) {
-        const customImg = response.data.custom_model?.image || response.data.customModel?.image
-        const defaultImg = response.data.default_model?.image || response.data.defaultModel?.image
+      if (response.data.success) {
+        const { classification, detected_image_custom, detected_image_default, all_detections } = response.data
         
+        setResult(classification)
         setDetectedImages({
-          custom: customImg || null,
-          default: defaultImg || null
+          custom: detected_image_custom || null,
+          default: detected_image_default || null
         })
+        setAllDetections(all_detections || [])
         
-        console.log('🎯 Detection images received:', {
-          customModel: customImg ? 'Available' : 'Not available',
-          defaultModel: defaultImg ? 'Available' : 'Not available'
+        toast.success('Classification completed successfully!', {
+          duration: 3000,
+          icon: '✅',
         })
-      }
 
-      // Handle all detections
-      const allDets = response.data.all_detections || response.data.allDetections || []
-      if (allDets.length > 0) {
-        setAllDetections(allDets)
-        console.log(`📋 Found ${allDets.length} detections`)
-      } else if (captureMode === 'camera' && selectedFile.name.includes('cropped')) {
-        // If no detections from cropped image, show helpful message
-        toast('💡 Tip: Try capturing a wider area or better lighting', {
-          duration: 5000,
-          icon: '💡'
-        })
+        // Refresh statistics after classification
+        try {
+          const statsResponse = await apiService.getUserStatistics()
+          setUserStats(statsResponse.data.stats)
+        } catch (error) {
+          console.error('Error refreshing statistics:', error)
+        }
       }
-      
-      toast.success('✅ Waste classified successfully!', {
-        id: loadingToast,
+    } catch (error) {
+      console.error('Classification error:', error)
+      const errorMessage = error.response?.data?.error || 'Classification failed. Please try again.'
+      toast.error(errorMessage, {
         duration: 4000,
       })
-      
-    } catch (err) {
-      console.error('❌ Classification error:', err)
-      const errorMessage = err.response?.data?.detail || 
-                          err.response?.data?.error ||
-                          err.message || 
-                          'Failed to classify waste. Please ensure ML service is running on port 5000.'
-      toast.error(errorMessage, {
-        id: loadingToast,
-        duration: 5000,
-      })
-      
-      // Additional guidance for cropped images
-      if (captureMode === 'camera' && selectedFile.name.includes('cropped')) {
-        setTimeout(() => {
-          toast('💡 Try recapturing with better lighting or larger crop area', {
-            duration: 5000,
-            icon: '💡'
-          })
-        }, 1000)
-      }
     } finally {
       setLoading(false)
     }
   }
 
-  // Reset - IMPROVED with cleanup
   const handleReset = () => {
-    // Clean up object URLs to prevent memory leaks
-    if (capturedImage && capturedImage.startsWith('blob:')) {
-      URL.revokeObjectURL(capturedImage)
-    }
-    if (preview && preview.startsWith('blob:')) {
-      URL.revokeObjectURL(preview)
-    }
-    
     setSelectedFile(null)
+    setPreview(null)
+    setResult(null)
+    setDetectedImages({ custom: null, default: null })
+    setAllDetections([])
+    setCapturedImage(null)
+    
+    const fileInput = document.getElementById('file-input')
+    if (fileInput) {
+      fileInput.value = ''
+    }
+
+    // If in camera mode, show camera again
+    if (captureMode === 'camera') {
+      setShowCamera(true)
+    }
+
+    toast.success('Ready for new classification', {
+      duration: 2000,
+      icon: '✨',
+    })
+  }
+
+  const handleRetakePhoto = () => {
+    console.log('🔄 Retaking photo')
     setPreview(null)
     setCapturedImage(null)
     setResult(null)
     setDetectedImages({ custom: null, default: null })
     setAllDetections([])
-    setActiveModel('custom')
-    toast.success('Reset complete')
+    setShowCamera(true)
+    
+    toast.info('Camera reopened. Take a new photo.', {
+      duration: 2000,
+    })
   }
-
-  // Switch capture mode
-  const switchMode = (mode) => {
-    setCaptureMode(mode)
-    handleReset()
-    toast.success(`Switched to ${mode === 'upload' ? 'Upload' : 'Camera'} mode`)
-  }
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (capturedImage && capturedImage.startsWith('blob:')) {
-        URL.revokeObjectURL(capturedImage)
-      }
-      if (preview && preview.startsWith('blob:')) {
-        URL.revokeObjectURL(preview)
-      }
-    }
-  }, [capturedImage, preview])
 
   return (
-    <div className="app-container">
+    <div className="dashboard-container">
       <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
-      <div className="main-content">
-        <main className="content no-sidebar">
-          <div className="dashboard-header">
-            <h2>🗑️ Waste Classification Dashboard</h2>
-            <p style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-              Upload an image or use your camera to classify waste with AI
-            </p>
+      
+      {/* Hero Section */}
+      <section className="dashboard-hero">
+        <div className="dashboard-hero-content">
+          <h1>Waste Classification Dashboard</h1>
+          <p>Upload an image or use your camera to classify waste with AI</p>
+        </div>
+      </section>
+
+      {/* User Statistics Section */}
+      <section className="dashboard-stats-section">
+        {!statsLoading && userStats && (
+          <div className="statistics-grid">
+            <div className="stat-card">
+              <h3>Total Classifications</h3>
+              <p className="stat-number">{userStats.totalClassifications}</p>
+              <p className="stat-description">Items analyzed</p>
+            </div>
+            
+            <div className="stat-card">
+              <h3>Recyclable Items</h3>
+              <p className="stat-number" style={{ color: '#10b981' }}>
+                {userStats.recyclableCount}
+              </p>
+              <p className="stat-description">
+                {userStats.totalClassifications > 0 
+                  ? `${((userStats.recyclableCount / userStats.totalClassifications) * 100).toFixed(1)}% of total`
+                  : '0% of total'
+                }
+              </p>
+            </div>
+            
+            <div className="stat-card">
+              <h3>Non-Recyclable Items</h3>
+              <p className="stat-number" style={{ color: '#ef4444' }}>
+                {userStats.nonRecyclableCount}
+              </p>
+              <p className="stat-description">
+                {userStats.totalClassifications > 0
+                  ? `${((userStats.nonRecyclableCount / userStats.totalClassifications) * 100).toFixed(1)}% of total`
+                  : '0% of total'
+                }
+              </p>
+            </div>
+            
+            <div className="stat-card">
+              <h3>Average Confidence</h3>
+              <p className="stat-number">{userStats.averageConfidence}%</p>
+              <p className="stat-description">Model accuracy</p>
+            </div>
+            
+            <div className="stat-card">
+              <h3>Most Common Category</h3>
+              <p className="stat-number" style={{ fontSize: '20px', textTransform: 'capitalize' }}>
+                {userStats.mostCommonCategory}
+              </p>
+              <p className="stat-description">
+                {userStats.categoryBreakdown[userStats.mostCommonCategory] || 0} items
+              </p>
+            </div>
+            
+            <div className="stat-card">
+              <h3>Recent Activity</h3>
+              <p className="stat-number" style={{ fontSize: '16px' }}>
+                {userStats.recentActivity 
+                  ? new Date(userStats.recentActivity).toLocaleDateString()
+                  : 'No activity yet'
+                }
+              </p>
+              <p className="stat-description">Last classification</p>
+            </div>
           </div>
-          
-          {/* User Statistics Section */}
-          {!statsLoading && userStats && (
-            <div className="statistics-grid">
-              <div className="stat-card">
-                <h3>Total Classifications</h3>
-                <p className="stat-number">{userStats.totalClassifications}</p>
-                <p className="stat-description">Items analyzed</p>
-              </div>
-              
-              <div className="stat-card">
-                <h3>Recyclable Items</h3>
-                <p className="stat-number" style={{ color: '#10b981' }}>
-                  {userStats.recyclableCount}
-                </p>
-                <p className="stat-description">
-                  {userStats.totalClassifications > 0 
-                    ? `${((userStats.recyclableCount / userStats.totalClassifications) * 100).toFixed(1)}% of total`
-                    : '0% of total'
-                  }
-                </p>
-              </div>
-              
-              <div className="stat-card">
-                <h3>Non-Recyclable Items</h3>
-                <p className="stat-number" style={{ color: '#ef4444' }}>
-                  {userStats.nonRecyclableCount}
-                </p>
-                <p className="stat-description">
-                  {userStats.totalClassifications > 0
-                    ? `${((userStats.nonRecyclableCount / userStats.totalClassifications) * 100).toFixed(1)}% of total`
-                    : '0% of total'
-                  }
-                </p>
-              </div>
-              
-              <div className="stat-card">
-                <h3>Average Confidence</h3>
-                <p className="stat-number">{userStats.averageConfidence}%</p>
-                <p className="stat-description">Model accuracy</p>
-              </div>
-              
-              <div className="stat-card">
-                <h3>Most Common Category</h3>
-                <p className="stat-number" style={{ fontSize: '20px', textTransform: 'capitalize' }}>
-                  {userStats.mostCommonCategory}
-                </p>
-                <p className="stat-description">
-                  {userStats.categoryBreakdown[userStats.mostCommonCategory] || 0} items
-                </p>
-              </div>
-              
-              <div className="stat-card">
-                <h3>Recent Activity</h3>
-                <p className="stat-number" style={{ fontSize: '16px' }}>
-                  {userStats.recentActivity 
-                    ? new Date(userStats.recentActivity).toLocaleDateString()
-                    : 'No activity yet'
-                  }
-                </p>
-                <p className="stat-description">Last classification</p>
-              </div>
-            </div>
-          )}
+        )}
 
-          {statsLoading && (
-            <div className="statistics-grid">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="stat-card" style={{ opacity: 0.6 }}>
-                  <h3>Loading...</h3>
-                  <p className="stat-number">--</p>
-                </div>
-              ))}
-            </div>
-          )}
+        {statsLoading && (
+          <div className="statistics-grid">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="stat-card" style={{ opacity: 0.6 }}>
+                <h3>Loading...</h3>
+                <p className="stat-number">--</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
+      {/* Upload Section */}
+      <section className="dashboard-upload-section">
+        <div className="upload-section">
           {/* Mode Selector */}
-          <div className="upload-section">
-            <div className="model-tabs" style={{ marginBottom: '1.5rem' }}>
-              <button 
-                className={`tab-btn ${captureMode === 'upload' ? 'active' : ''}`}
-                onClick={() => switchMode('upload')}
-                disabled={loading}
-              >
-                📁 Upload Image
-              </button>
-              <button 
-                className={`tab-btn ${captureMode === 'camera' ? 'active' : ''}`}
-                onClick={() => switchMode('camera')}
-                disabled={loading}
-              >
-                📷 Use Camera
-              </button>
-            </div>
+          <div className="model-tabs" style={{ marginBottom: '1.5rem' }}>
+            <button 
+              className={`tab-btn ${captureMode === 'upload' ? 'active' : ''}`}
+              onClick={() => switchMode('upload')}
+              disabled={loading}
+            >
+              📁 Upload Image
+            </button>
+            <button 
+              className={`tab-btn ${captureMode === 'camera' ? 'active' : ''}`}
+              onClick={() => switchMode('camera')}
+              disabled={loading}
+            >
+              📷 Use Camera
+            </button>
+          </div>
 
-            {/* Upload Mode */}
-            {captureMode === 'upload' && (
-              <>
-                <h3>Upload Waste Image</h3>
-                <form onSubmit={handleSubmit}>
-                  <div className="file-input-container">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      id="file-input"
-                      className="file-input"
-                      disabled={loading}
-                    />
-                    <label htmlFor="file-input" className="file-label">
-                      Choose Image
-                    </label>
-                    {selectedFile && <span className="file-name">📄 {selectedFile.name}</span>}
+          {captureMode === 'upload' ? (
+            <>
+              <div className="file-input-container">
+                <input
+                  type="file"
+                  id="file-input"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="file-input"
+                  disabled={loading}
+                />
+                <label htmlFor="file-input" className="file-label">
+                  <span className="file-icon">📁</span>
+                  <span>{selectedFile ? selectedFile.name : 'Choose an image file'}</span>
+                </label>
+              </div>
+
+              {preview && (
+                <div className="preview-container">
+                  <h4>📷 Image Preview</h4>
+                  <img src={preview} alt="Preview" className="preview-image" />
+                </div>
+              )}
+
+              <div className="button-group">
+                <button 
+                  onClick={handleClassify}
+                  disabled={(!selectedFile && !capturedImage) || loading}
+                  className="btn btn-primary"
+                  style={{ flex: 1 }}
+                >
+                  {loading ? '🔄 Classifying...' : '🤖 Classify Waste'}
+                </button>
+                {result && (
+                  <button 
+                    onClick={handleReset}
+                    className="btn"
+                    style={{ flex: 1, backgroundColor: '#4CAF50', color: 'white' }}
+                  >
+                    ✨ New Classification
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Show Camera when showCamera is true and no preview */}
+              {showCamera && !preview && (
+                <Camera 
+                  onCapture={handleCapture} 
+                  isActive={true} 
+                  onClose={() => {
+                    setShowCamera(false)
+                    switchMode('upload')
+                  }} 
+                />
+              )}
+
+              {/* Show Preview and buttons after capture */}
+              {!showCamera && preview && (
+                <>
+                  <div className="preview-container">
+                    <h4>📷 Captured Image Preview</h4>
+                    <img src={preview} alt="Captured Preview" className="preview-image" />
                   </div>
 
-                  {preview && !result && (
-                    <div className="image-preview">
-                      <h4>📸 Preview</h4>
-                      <img src={preview} alt="Preview" />
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div className="button-group">
                     <button 
-                      type="submit" 
+                      onClick={handleClassify}
+                      disabled={loading}
                       className="btn btn-primary"
-                      disabled={!selectedFile || loading}
                       style={{ flex: 1 }}
                     >
-                      {loading ? '🔄 Classifying...' : '🔍 Classify Waste'}
+                      {loading ? '🔄 Classifying...' : '🤖 Classify Waste'}
                     </button>
-                    {selectedFile && (
+                    {result ? (
                       <button 
-                        type="button"
                         onClick={handleReset}
                         className="btn"
-                        style={{ flex: 1 }}
-                        disabled={loading}
+                        style={{ flex: 1, backgroundColor: '#4CAF50', color: 'white' }}
                       >
-                        🔄 Reset
+                        ✨ New Classification
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={handleRetakePhoto}
+                        className="btn"
+                        style={{ flex: 1, backgroundColor: '#ff9800', color: 'white' }}
+                      >
+                        📷 Retake Photo
                       </button>
                     )}
                   </div>
-                </form>
-              </>
-            )}
+                </>
+              )}
 
-            {/* Camera Mode */}
-            {captureMode === 'camera' && !capturedImage && (
-              <Camera 
-                onCapture={handleCameraCapture}
-                isActive={captureMode === 'camera'}
-                onClose={() => switchMode('upload')}
-              />
-            )}
-
-            {/* Captured Image Preview */}
-            {captureMode === 'camera' && capturedImage && (
-              <>
-                <h3>📸 Captured Image</h3>
-                <div className="image-preview">
-                  <img src={capturedImage} alt="Captured waste" />
+              {/* Show button to open camera if both closed and no preview */}
+              {!showCamera && !preview && (
+                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                  <button 
+                    onClick={() => setShowCamera(true)}
+                    className="btn btn-primary"
+                    style={{ padding: '16px 40px', fontSize: '1.1rem' }}
+                  >
+                    📷 Open Camera
+                  </button>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', maxWidth: '480px', margin: '0 auto' }}>
-                  {!result && (
-                    <>
-                      <button 
-                        onClick={handleSubmit}
-                        className="btn btn-primary"
-                        disabled={loading}
-                        style={{ flex: 1 }}
-                      >
-                        {loading ? '🔄 Classifying...' : '🔍 Classify Waste'}
-                      </button>
-                      <button 
-                        onClick={() => {
-                          if (capturedImage && capturedImage.startsWith('blob:')) {
-                            URL.revokeObjectURL(capturedImage)
-                          }
-                          setCapturedImage(null)
-                          setSelectedFile(null)
-                          setPreview(null)
-                        }}
-                        className="btn"
-                        style={{ flex: 1 }}
-                        disabled={loading}
-                      >
-                        🔄 Retake Photo
-                      </button>
-                    </>
-                  )}
-                  {result && (
-                    <button 
-                      onClick={handleReset}
-                      className="btn"
-                      style={{ flex: 1, backgroundColor: '#4CAF50', color: 'white' }}
-                    >
-                      ✨ New Classification
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
 
-          {/* Detection Results with Bounding Boxes */}
-          {(detectedImages.custom || detectedImages.default) && (
-            <div className="detected-images-section">
-              <h3>🎯 AI Detection Results</h3>
-              <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                Compare results from both AI models
-              </p>
+      {/* Detection Results Section */}
+      {(detectedImages.custom || detectedImages.default) && (
+        <section className="dashboard-results-section">
+          <div className="detected-images-section">
+            <h3>🎯 AI Detection Results</h3>
+            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              Compare results from both AI models
+            </p>
+            
+            <div className="model-tabs">
+              <button 
+                className={`tab-btn ${activeModel === 'custom' ? 'active' : ''}`}
+                onClick={() => setActiveModel('custom')}
+                disabled={!detectedImages.custom}
+              >
+                🤖 Custom Model
+                {detectedImages.custom && <span style={{ marginLeft: '5px', fontSize: '0.8rem' }}>✅</span>}
+              </button>
+              <button 
+                className={`tab-btn ${activeModel === 'default' ? 'active' : ''}`}
+                onClick={() => setActiveModel('default')}
+                disabled={!detectedImages.default}
+              >
+                🔍 YOLOv5 Model
+                {detectedImages.default && <span style={{ marginLeft: '5px', fontSize: '0.8rem' }}>✅</span>}
+              </button>
+            </div>
+
+            <div className="detected-image-container">
+              {activeModel === 'custom' && detectedImages.custom && (
+                <div>
+                  <h4 style={{ textAlign: 'center', color: '#4CAF50', marginBottom: '1rem' }}>
+                    Custom Trained Model Results
+                  </h4>
+                  <img 
+                    src={detectedImages.custom} 
+                    alt="Custom Model Detection" 
+                    className="detected-image"
+                  />
+                </div>
+              )}
               
-              <div className="model-tabs">
-                <button 
-                  className={`tab-btn ${activeModel === 'custom' ? 'active' : ''}`}
-                  onClick={() => setActiveModel('custom')}
-                  disabled={!detectedImages.custom}
-                >
-                  🤖 Custom Model
-                  {detectedImages.custom && <span style={{ marginLeft: '5px', fontSize: '0.8rem' }}>✅</span>}
-                </button>
-                <button 
-                  className={`tab-btn ${activeModel === 'default' ? 'active' : ''}`}
-                  onClick={() => setActiveModel('default')}
-                  disabled={!detectedImages.default}
-                >
-                  🔍 YOLOv5 Model
-                  {detectedImages.default && <span style={{ marginLeft: '5px', fontSize: '0.8rem' }}>✅</span>}
-                </button>
-              </div>
-
-              <div className="detected-image-container">
-                {activeModel === 'custom' && detectedImages.custom && (
-                  <div>
-                    <h4 style={{ textAlign: 'center', color: '#4CAF50', marginBottom: '1rem' }}>
-                      Custom Trained Model Results
-                    </h4>
-                    <img 
-                      src={detectedImages.custom} 
-                      alt="Detected waste with bounding boxes (Custom Model)" 
-                      className="detected-image"
-                    />
-                  </div>
-                )}
-                {activeModel === 'default' && detectedImages.default && (
-                  <div>
-                    <h4 style={{ textAlign: 'center', color: '#2196F3', marginBottom: '1rem' }}>
-                      YOLOv5 Default Model Results
-                    </h4>
-                    <img 
-                      src={detectedImages.default} 
-                      alt="Detected waste with bounding boxes (Default Model)" 
-                      className="detected-image"
-                    />
-                  </div>
-                )}
-              </div>
+              {activeModel === 'default' && detectedImages.default && (
+                <div>
+                  <h4 style={{ textAlign: 'center', color: '#2563eb', marginBottom: '1rem' }}>
+                    YOLOv5 Pre-trained Model Results
+                  </h4>
+                  <img 
+                    src={detectedImages.default} 
+                    alt="Default Model Detection" 
+                    className="detected-image"
+                  />
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        </section>
+      )}
 
-          {/* All Detections */}
-          {allDetections.length > 0 && (
-            <div className="all-detections-section">
-              <h3>📋 All Detected Items ({allDetections.length})</h3>
-              <div className="detections-grid">
-                {allDetections.map((detection, index) => (
-                  <div key={index} className="detection-card">
-                    <div className="detection-header">
-                      <span className="detection-item">🔹 {detection.item}</span>
-                      <span className={`detection-type ${detection.type?.toLowerCase()}`}>
-                        {detection.type}
-                      </span>
-                    </div>
-                    <div className="detection-confidence">
-                      Confidence: {(detection.confidence * 100).toFixed(1)}%
-                    </div>
-                    <div className="confidence-bar">
-                      <div 
-                        className="confidence-fill" 
-                        style={{ width: `${detection.confidence * 100}%` }}
-                      ></div>
-                    </div>
+      {/* All Detections Section */}
+      {allDetections.length > 0 && (
+        <section className="dashboard-detections-section">
+          <div className="all-detections-section">
+            <h3>🔍 All Detected Items</h3>
+            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              Detailed breakdown of all items found in the image
+            </p>
+            <div className="detections-grid">
+              {allDetections.map((detection, index) => (
+                <div key={index} className="detection-card">
+                  <div className="detection-header">
+                    <span className="detection-item">🔹 {detection.item}</span>
+                    <span className={`detection-type ${detection.type?.toLowerCase()}`}>
+                      {detection.type}
+                    </span>
                   </div>
-                ))}
-              </div>
+                  <div className="detection-confidence">
+                    Confidence: {(detection.confidence * 100).toFixed(1)}%
+                  </div>
+                  <div className="confidence-bar">
+                    <div 
+                      className="confidence-fill" 
+                      style={{ width: `${detection.confidence * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
+        </section>
+      )}
 
-          {/* Primary Classification Result */}
-          {result && (
-            <div className="result-section">
-              <h3>✅ Primary Classification Result</h3>
-              <div className="result-card">
-                <p><strong>🗑️ Waste Type:</strong> {result.wasteType}</p>
-                <p><strong>📦 Category:</strong> <span className={`category-badge ${result.category?.toLowerCase()}`}>{result.category}</span></p>
-                <p><strong>🎯 Confidence:</strong> <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{result.confidence}%</span></p>
-                <p><strong>♻️ Recyclable:</strong> <span className={result.recyclable ? 'recyclable-yes' : 'recyclable-no'}>{result.recyclable ? 'Yes ✅' : 'No ❌'}</span></p>
-                {result.disposal_instructions && (
-                  <div className="disposal-instructions">
-                    <strong>📌 Disposal Instructions:</strong>
-                    <p>{result.disposal_instructions}</p>
-                  </div>
-                )}
-                {result.description && (
-                  <p className="description"><strong>ℹ️ Description:</strong> {result.description}</p>
-                )}
-              </div>
+      {/* Primary Classification Result */}
+      {result && (
+        <section className="dashboard-classification-section">
+          <div className="result-section">
+            <h3>✅ Primary Classification Result</h3>
+            <div className="result-card">
+              <p><strong>🗑️ Waste Type:</strong> {result.wasteType}</p>
+              <p><strong>📦 Category:</strong> <span className={`category-badge ${result.category?.toLowerCase()}`}>{result.category}</span></p>
+              <p><strong>🎯 Confidence:</strong> <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{result.confidence}%</span></p>
+              <p><strong>♻️ Recyclable:</strong> <span className={result.recyclable ? 'recyclable-yes' : 'recyclable-no'}>{result.recyclable ? 'Yes ✅' : 'No ❌'}</span></p>
+              {result.disposal_instructions && (
+                <div className="disposal-instructions">
+                  <strong>📌 Disposal Instructions:</strong>
+                  <p>{result.disposal_instructions}</p>
+                </div>
+              )}
+              {result.description && (
+                <p className="description"><strong>ℹ️ Description:</strong> {result.description}</p>
+              )}
             </div>
-          )}
-        </main>
-      </div>
+          </div>
+        </section>
+      )}
+
+      <Footer />
     </div>
   )
 }

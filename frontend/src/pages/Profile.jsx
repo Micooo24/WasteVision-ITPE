@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 import Snackbar from '../components/Snackbar'
 import { apiService } from '../services/api'
 import { getUser, saveUser } from '../services/auth'
-import '../assets/css/dashboard.css'
+import '../assets/css/profile.css'
 import defaultAvatar from '../assets/img/OIP.jpg'
 
 function Profile({ isAuthenticated, setIsAuthenticated }) {
@@ -196,68 +197,65 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
   const displayAvatar = avatarPreview || formData.avatar || defaultAvatar
 
   return (
-    <div className="app-container">
+    <div className="profile-container">
       <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
       
-      <div className="main-content">
-        <main className={`content no-sidebar`}>
-          <div className="dashboard-header">
-            <h2>Profile Settings</h2>
-          </div>
+      {/* Hero Section */}
+      <section className="profile-hero">
+        <div className="profile-hero-content">
+          <h1>Profile Settings</h1>
+          <p>Manage your account information and preferences</p>
+        </div>
+      </section>
 
-          <div className="profile-section">
-            {error && <div className="error-message">{error}</div>}
-            
-            <form onSubmit={handleSubmit} className="profile-form">
-              {/* Avatar Display Section */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
-                <div style={{ position: 'relative', width: '150px', height: '150px', marginBottom: '1rem' }}>
-                  <img 
-                    src={displayAvatar} 
-                    alt="Profile Avatar" 
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      border: '4px solid #4caf50',
-                      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
-                    }}
-                    onError={(e) => {
-                      e.target.src = defaultAvatar;
-                    }}
-                  />
-                </div>
-                
-                <label htmlFor="avatar-upload" style={{
-                  padding: '0.5rem 1.5rem',
-                  backgroundColor: '#4caf50',
-                  color: 'white',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: '500',
-                  transition: 'background-color 0.3s'
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#45a049'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#4caf50'}>
-                  Change Avatar
-                </label>
-                <input
-                  type="file"
-                  id="avatar-upload"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  style={{ display: 'none' }}
+      {/* Profile Form Section */}
+      <section className="profile-form-section">
+        <div className="profile-form-wrapper">
+          {error && (
+            <div className="error-message">
+              <i className="fas fa-exclamation-circle"></i>
+              {error}
+            </div>
+          )}
+          
+          <form onSubmit={handleSubmit} className="profile-form">
+            {/* Avatar Section */}
+            <div className="avatar-section">
+              <div className="avatar-container">
+                <img 
+                  src={displayAvatar} 
+                  alt="Profile Avatar" 
+                  className="avatar-image"
+                  onError={(e) => {
+                    e.target.src = defaultAvatar;
+                  }}
                 />
-                {avatarPreview && (
-                  <small style={{ marginTop: '0.5rem', color: '#666' }}>
-                    New avatar selected. Click "Update Profile" to save.
-                  </small>
-                )}
               </div>
+              
+              <label htmlFor="avatar-upload" className="avatar-upload-label">
+                <i className="fas fa-camera"></i>
+                Change Avatar
+              </label>
+              <input
+                type="file"
+                id="avatar-upload"
+                className="avatar-upload-input"
+                accept="image/*"
+                onChange={handleAvatarChange}
+              />
+              {avatarPreview && (
+                <small className="avatar-preview-text">
+                  ✓ New avatar selected. Click "Update Profile" to save.
+                </small>
+              )}
+            </div>
 
-              <h3>Personal Information</h3>
+            {/* Personal Information Section */}
+            <div className="form-section">
+              <h3>
+                <i className="fas fa-user"></i>
+                Personal Information
+              </h3>
               
               <div className="form-group">
                 <label htmlFor="name">Full Name</label>
@@ -273,23 +271,32 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
               </div>
 
               <div className="form-group">
-                <label htmlFor="email">Email</label>
+                <label htmlFor="email">Email Address</label>
                 <input
                   type="email"
                   id="email"
                   name="email"
                   value={formData.email}
                   disabled
-                  className="input-disabled"
                   title="Email cannot be changed"
                 />
-                <small className="form-text">Email address cannot be changed</small>
+                <small className="form-text">
+                  <i className="fas fa-info-circle"></i> Email address cannot be changed
+                </small>
               </div>
+            </div>
 
-              <hr />
+            <hr className="form-divider" />
 
-              <h3>Change Password</h3>
-              <p className="form-description">Leave blank if you don't want to change your password</p>
+            {/* Change Password Section */}
+            <div className="form-section">
+              <h3>
+                <i className="fas fa-lock"></i>
+                Change Password
+              </h3>
+              <p className="form-description">
+                Leave these fields blank if you don't want to change your password
+              </p>
 
               <div className="form-group">
                 <label htmlFor="currentPassword">Current Password</label>
@@ -328,16 +335,26 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
                   minLength="6"
                 />
               </div>
+            </div>
 
-              <hr />
-
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Updating...' : 'Update Profile'}
-              </button>
-            </form>
-          </div>
-        </main>
-      </div>
+            <button type="submit" className="btn-submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <i className="fas fa-spinner fa-spin"></i>
+                  Updating Profile...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-save"></i>
+                  Update Profile
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      </section>
+      
+      <Footer />
       
       <Snackbar
         isOpen={snackbar.isOpen}
