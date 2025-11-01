@@ -69,17 +69,27 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
         setError('Please select an image file')
+        setSnackbar({
+          isOpen: true,
+          message: 'Please select an image file',
+          type: 'error'
+        })
         return
       }
 
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError('Image size should be less than 5MB')
+        setSnackbar({
+          isOpen: true,
+          message: 'Image size should be less than 5MB',
+          type: 'error'
+        })
         return
       }
 
       setAvatarFile(file)
-      
+
       // Create preview
       const reader = new FileReader()
       reader.onloadend = () => {
@@ -94,24 +104,45 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
     e.preventDefault()
     setError('')
 
+    // Password validation
     if (formData.newPassword || formData.confirmPassword || formData.currentPassword) {
       if (!formData.currentPassword) {
         setError('Current password is required to change password')
+        setSnackbar({
+          isOpen: true,
+          message: 'Current password is required to change password',
+          type: 'error'
+        })
         return
       }
       
       if (!formData.newPassword) {
         setError('New password is required')
+        setSnackbar({
+          isOpen: true,
+          message: 'New password is required',
+          type: 'error'
+        })
         return
       }
 
       if (formData.newPassword !== formData.confirmPassword) {
         setError('New passwords do not match')
+        setSnackbar({
+          isOpen: true,
+          message: 'New passwords do not match',
+          type: 'error'
+        })
         return
       }
 
       if (formData.newPassword.length < 6) {
         setError('New password must be at least 6 characters')
+        setSnackbar({
+          isOpen: true,
+          message: 'New password must be at least 6 characters',
+          type: 'error'
+        })
         return
       }
     }
@@ -132,6 +163,8 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
       }
 
       const response = await apiService.updateProfile(updateData)
+      
+      // Update local storage with new user data
       saveUser(response.data.user)
       
       setSnackbar({
@@ -140,6 +173,7 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
         type: 'success'
       })
       
+      // Reset form data
       setFormData({
         ...formData,
         avatar: response.data.user.avatar || formData.avatar,
@@ -149,8 +183,17 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
       })
       setAvatarFile(null)
       setAvatarPreview(null)
+      
+      // Reload profile to get fresh data
+      await fetchProfile()
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update profile')
+      const errorMessage = err.response?.data?.message || 'Failed to update profile'
+      setError(errorMessage)
+      setSnackbar({
+        isOpen: true,
+        message: errorMessage,
+        type: 'error'
+      })
     } finally {
       setLoading(false)
     }
@@ -161,6 +204,7 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
   return (
     <div className="app-container">
       <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
+      
       <div className="main-content">
         <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
         <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
@@ -187,7 +231,6 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
                       boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
                     }}
                     onError={(e) => {
-                      // Fallback to default avatar if image fails to load
                       e.target.src = defaultAvatar;
                     }}
                   />

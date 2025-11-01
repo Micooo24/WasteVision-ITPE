@@ -10,6 +10,6 @@ const {verifyToken} = require("../middlewares/auth")
 router.post("/register", upload.single("avatar"), authController.register);
 router.post("/login", authController.login);
 router.get('/profile', verifyToken, authController.getProfile);
-router.put('/profile', verifyToken, authController.updateProfile);
+router.put('/profile', verifyToken, upload.single("avatar"), authController.updateProfile);
 
 module.exports = router;

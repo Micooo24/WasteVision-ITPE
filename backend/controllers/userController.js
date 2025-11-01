@@ -126,8 +126,6 @@ exports.fetchRecordById = async (req, res) => {
   }
 };
 
-// ...existing code...
-
 // Delete a record by ID
 exports.deleteRecord = async (req, res) => {
   try {

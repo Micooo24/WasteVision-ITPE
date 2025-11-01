@@ -105,6 +105,25 @@ exports.updateProfile = async (req, res) => {
       user.name = name;
     }
 
+    // Handle avatar upload if file is provided
+    if (req.file) {
+      // Delete old avatar from Cloudinary if it exists
+      if (user.avatar && user.avatar.public_id) {
+        try {
+          await cloudinary.uploader.destroy(user.avatar.public_id);
+        } catch (error) {
+          console.log("Error deleting old avatar:", error.message);
+        }
+      }
+
+      // Upload new avatar to Cloudinary
+      const result = await uploadToCloudinary(req.file.buffer, "wastevision-avatars");
+      user.avatar = {
+        public_id: result.public_id,
+        url: result.secure_url
+      };
+    }
+
     // Update password if provided
     if (newPassword) {
       if (!currentPassword) {
@@ -135,7 +154,7 @@ exports.updateProfile = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      avatar: user.avatar,
+      avatar: user.avatar?.url || null,
       role: user.role
     };
 
