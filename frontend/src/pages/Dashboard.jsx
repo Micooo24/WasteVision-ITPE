@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import Navbar from '../components/Navbar'
-import Sidebar from '../components/Sidebar'
 import Camera from './Camera'
 import { apiService } from '../services/api'
 import '../assets/css/dashboard.css'
 
 function Dashboard({ isAuthenticated, setIsAuthenticated }) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [result, setResult] = useState(null)
@@ -38,10 +36,6 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
       fetchUserStatistics()
     }
   }, [isAuthenticated])
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed)
-  }
 
   // Handle Camera Capture - IMPROVED WITH VALIDATION
   const handleCameraCapture = (file, imageUrl) => {
@@ -262,8 +256,7 @@ function Dashboard({ isAuthenticated, setIsAuthenticated }) {
     <div className="app-container">
       <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
       <div className="main-content">
-        <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
-        <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
+        <main className="content no-sidebar">
           <div className="dashboard-header">
             <h2>🗑️ Waste Classification Dashboard</h2>
             <p style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.5rem' }}>

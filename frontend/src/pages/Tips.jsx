@@ -1,17 +1,11 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
-import Sidebar from '../components/Sidebar'
 import { apiService } from '../services/api'
 import '../assets/css/dashboard.css'
 
 function Tips({ isAuthenticated, setIsAuthenticated }) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [tips, setTips] = useState([])
   const [loading, setLoading] = useState(true)
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed)
-  }
 
   useEffect(() => {
     fetchTips()
@@ -50,8 +44,7 @@ function Tips({ isAuthenticated, setIsAuthenticated }) {
     <div className="app-container">
       <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
       <div className="main-content">
-        <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
-        <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
+        <main className={`content no-sidebar`}>
           <div className="dashboard-header">
             <h2>Waste Management Tips</h2>
           </div>

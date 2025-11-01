@@ -1,21 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { logout, getUser } from '../services/auth';
 import LogoutModal from './LogoutModal';
-import { getUser, getToken, removeToken } from '../services/auth';
 import '../assets/css/navbar.css';
 
 const Navbar = ({ isAuthenticated, setIsAuthenticated }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [userName, setUserName] = useState('');
   const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    // Update user info when auth state or route changes
-    const user = getUser();
-    setUserName(user?.name || 'User');
-  }, [isAuthenticated, location.pathname]);
+  const user = getUser();
+  const userName = user?.name || 'User';
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -26,7 +20,7 @@ const Navbar = ({ isAuthenticated, setIsAuthenticated }) => {
   };
 
   const confirmLogout = () => {
-    removeToken(); // Use the auth service helper
+    logout();
     setIsAuthenticated(false);
     setIsLogoutModalOpen(false);
     navigate('/login', { replace: true });
@@ -67,15 +61,18 @@ const Navbar = ({ isAuthenticated, setIsAuthenticated }) => {
 
           <ul className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
             <li><Link to="/" onClick={() => setIsMenuOpen(false)}>Home</Link></li>
-            {isAuthenticated && (
-              <li><Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>Dashboard</Link></li>
-            )}
             <li><Link to="/about" onClick={() => setIsMenuOpen(false)}>About Us</Link></li>
             <li><Link to="/tips" onClick={() => setIsMenuOpen(false)}>Tips</Link></li>
+            {isAuthenticated && (
+              <>
+              <li><Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>Dashboard</Link></li>
+              <li><Link to="/history" onClick={() => setIsMenuOpen(false)}>History</Link></li>
+              </>
+            )}
           </ul>
 
           {isAuthenticated ? (
-            <button className="navbar-cta navbar-user-section">
+            <div className="navbar-cta navbar-user-section">
               <Link to="/profile" className="navbar-profile-link" onClick={() => setIsMenuOpen(false)}>
                 <span className="navbar-username">{userName}</span>
               </Link>
@@ -87,7 +84,7 @@ const Navbar = ({ isAuthenticated, setIsAuthenticated }) => {
               >
                 <i className="fas fa-sign-out-alt"></i>
               </button>
-            </button>
+            </div>
           ) : (
             <button className="navbar-cta" onClick={handleLoginClick}>
               Log In

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
-import Sidebar from '../components/Sidebar'
 import Snackbar from '../components/Snackbar'
 import { apiService } from '../services/api'
 import { getUser, saveUser } from '../services/auth'
@@ -8,7 +7,6 @@ import '../assets/css/dashboard.css'
 import defaultAvatar from '../assets/img/OIP.jpg'
 
 function Profile({ isAuthenticated, setIsAuthenticated }) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -22,10 +20,6 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
   const [snackbar, setSnackbar] = useState({ isOpen: false, message: '', type: 'success' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed)
-  }
 
   useEffect(() => {
     fetchProfile()
@@ -206,8 +200,7 @@ function Profile({ isAuthenticated, setIsAuthenticated }) {
       <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
       
       <div className="main-content">
-        <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
-        <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
+        <main className={`content no-sidebar`}>
           <div className="dashboard-header">
             <h2>Profile Settings</h2>
           </div>

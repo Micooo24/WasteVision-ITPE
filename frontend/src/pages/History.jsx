@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
-import Sidebar from '../components/Sidebar'
 import { apiService } from '../services/api'
 import toast from 'react-hot-toast'
 import '../assets/css/dashboard.css'
 import { exportHistoryToPDF } from '../services/pdfExport';
 
 function History({ isAuthenticated, setIsAuthenticated }) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -17,10 +15,6 @@ function History({ isAuthenticated, setIsAuthenticated }) {
   const [recordToDelete, setRecordToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [exportingPDF, setExportingPDF] = useState(false);
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed)
-  }
 
   useEffect(() => {
     fetchHistory()
@@ -143,9 +137,8 @@ function History({ isAuthenticated, setIsAuthenticated }) {
     <div className="app-container">
       <Navbar isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated}/>
       <div className="main-content">
-        <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
 
-        <main className={`content ${isCollapsed ? 'collapsed' : ''}`}>
+        <main className={`content no-sidebar`}>
           <div className="dashboard-header">
             <h2>Classification History</h2>
             {history.length > 0 && (
